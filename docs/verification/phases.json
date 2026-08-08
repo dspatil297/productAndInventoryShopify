@@ -1,0 +1,87 @@
+{
+  "retryAttempts": 3,
+  "retryDelayMs": 3000,
+  "logFile": "docs/verification/agent-log.md",
+  "phases": {
+    "0": {
+      "title": "Phase 0 — OAuth + DB + bootstrap",
+      "npmScript": "verify:phase-0",
+      "checklist": "docs/verification/phase-0-checklist.md"
+    },
+    "1": {
+      "title": "Phase 1 — Agency dashboard",
+      "npmScript": "verify:phase-1",
+      "checklist": "docs/verification/phase-1-checklist.md"
+    },
+    "2": {
+      "title": "Phase 2 — Merchant embedded shell",
+      "npmScript": "verify:phase-2",
+      "checklist": "docs/verification/phase-2-checklist.md"
+    },
+    "3": {
+      "title": "Phase 3 — Product list + search",
+      "npmScript": "verify:phase-3",
+      "checklist": "docs/verification/phase-3-checklist.md"
+    },
+    "4": {
+      "title": "Phase 4 — Metafield bulk editor",
+      "npmScript": "verify:phase-4",
+      "checklist": "docs/verification/phase-4-checklist.md"
+    },
+    "5": {
+      "title": "Phase 5 — Merchant portal + thin embedded shell",
+      "npmScript": "verify:phase-5",
+      "checklist": "docs/verification/phase-5-checklist.md"
+    },
+    "6": {
+      "title": "Phase 6 — Inventory manager",
+      "npmScript": "verify:phase-6",
+      "checklist": "docs/verification/phase-6-checklist.md"
+    },
+    "7": {
+      "title": "Phase 7 — Product create + CSV upload",
+      "npmScript": "verify:phase-7",
+      "checklist": "docs/verification/phase-7-checklist.md"
+    },
+    "8": {
+      "title": "Phase 8 — Polish + production hosts",
+      "npmScript": "verify:phase-8",
+      "checklist": "docs/verification/phase-8-checklist.md",
+      "status": "planned",
+      "note": "Create verify script + checklist when Phase 8 starts"
+    },
+    "9": {
+      "title": "Phase 9 — Merchant accounts",
+      "npmScript": "verify:phase-9",
+      "checklist": "docs/verification/phase-9-checklist.md",
+      "status": "complete"
+    },
+    "10": {
+      "title": "Phase 10 — Smart metafield forms",
+      "npmScript": "verify:phase-10",
+      "checklist": "docs/verification/phase-10-checklist.md",
+      "status": "complete"
+    },
+    "11": {
+      "title": "Phase 11 — PDP preview editor",
+      "npmScript": "verify:phase-11",
+      "checklist": "docs/verification/phase-11-checklist.md",
+      "status": "verify_pass",
+      "note": "Automated verify PASS 2026-07-19; manual checklist pending"
+    },
+    "12": {
+      "title": "Phase 12 — AI Excel mapper",
+      "npmScript": "verify:phase-12",
+      "checklist": "docs/verification/phase-12-checklist.md",
+      "status": "verify_pass",
+      "note": "Automated verify PASS 2026-07-22; manual checklist pending"
+    },
+    "13": {
+      "title": "Phase 13 — Module shell + future stubs",
+      "npmScript": "verify:phase-13",
+      "checklist": "docs/verification/phase-13-checklist.md",
+      "status": "planned",
+      "note": "Create verify script + checklist when Phase 13 starts"
+    }
+  }
+}

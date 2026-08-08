@@ -1,0 +1,15 @@
+---
+description: Shopify app code conventions for this repo
+globs: "{app,lib,components,prisma}/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Shopify code rules
+
+- Multi-tenant: resolve shop from session/URL; load token from DB per shop — never one global env token.
+- API host: `https://{shop}.myshopify.com/admin/api/{version}/graphql.json`
+- `metafieldsSet`: max 250 per call; definitions from `shop_configs`, not hardcoded.
+- Inventory spreadsheet: `inventorySetQuantities` + `compareQuantity`; deltas: `inventoryAdjustQuantities`; use `@idempotent(key:)`.
+- Secrets: server-only; never `NEXT_PUBLIC_` for tokens; use `lib/encryption.ts`; never log decrypted tokens.
+- Keep light: reuse helpers; no new service layers/packages without phase need; one Next.js deploy.
+- Match existing folder layout in `PROJECT.md` Section 9.

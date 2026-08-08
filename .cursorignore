@@ -1,0 +1,14 @@
+﻿node_modules/
+.next/
+dist/
+build/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+prisma/migrations/
+.shopify/
+.obsidian/
+docs/.obsidian/
+.git/

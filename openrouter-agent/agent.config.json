@@ -1,0 +1,17 @@
+{
+  "model": "openai/gpt-4o-mini",
+  "maxSteps": 20,
+  "maxCost": 1.0,
+  "sessionDir": ".sessions",
+  "showBanner": false,
+  "slashCommands": true,
+  "display": {
+    "toolDisplay": "grouped",
+    "reasoning": false,
+    "inputStyle": "block",
+    "loader": {
+      "text": "Working",
+      "style": "spinner"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+---
+description: Mandatory verification workflow — retry until pass, log results, user checklists
+alwaysApply: true
+---
+
+# Verification (every phase, every chat)
+
+Read `docs/verification/AGENT-PROTOCOL.md` when starting or finishing phase work.
+
+## Before marking phase done
+
+1. Run `npm run verify:phase-<N>` from project root
+2. If exit code ≠ 0 → fix → re-run until **0**
+3. Results append to `docs/verification/agent-log.md` automatically
+4. Update `PROJECT.md` Section 19 only after verify passes
+5. Give user `docs/verification/phase-<N>-checklist.md` for manual steps
+
+## New chat
+
+User says **Phase N** only → read Section 19 + Section 16 + agent-log + AGENT-PROTOCOL → **tell user any missing skills to install for Phase N** → then implement.
+
+Never skip verify because a prior chat already ran it — re-run after meaningful changes.
+
+Never read or log `.env.local` secrets.

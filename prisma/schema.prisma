@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model AgencyUser {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         String   @default("operator")
+  createdAt    DateTime @default(now()) @map("created_at")
+  shops        Shop[]
+
+  @@map("agency_users")
+}
+
+model Shop {
+  id            String         @id @default(uuid())
+  agencyUserId  String?        @map("agency_user_id")
+  shopDomain    String         @unique @map("shop_domain")
+  shopName      String         @map("shop_name")
+  shopEmail     String?        @map("shop_email")
+  shopifyShopId String         @map("shopify_shop_id")
+  planName      String?        @map("plan_name")
+  accessToken   String         @map("access_token")
+  scope         String?
+  currencyCode  String         @map("currency_code")
+  timezone      String
+  isActive      Boolean        @default(true) @map("is_active")
+  installedAt   DateTime       @default(now()) @map("installed_at")
+  uninstalledAt DateTime?      @map("uninstalled_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  agencyUser    AgencyUser?    @relation(fields: [agencyUserId], references: [id])
+  config        ShopConfig?
+  merchantUsers MerchantUser[]
+
+  @@map("shops")
+}
+
+model MerchantUser {
+  id           String   @id @default(uuid())
+  shopId       String   @map("shop_id")
+  email        String
+  passwordHash String   @map("password_hash")
+  name         String
+  role         String   @default("owner")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, email])
+  @@index([email])
+  @@map("merchant_users")
+}
+
+model ShopConfig {
+  id                    String   @id @default(uuid())
+  shopId                String   @unique @map("shop_id")
+  lowStockThreshold     Int      @default(5) @map("low_stock_threshold")
+  metafieldDefinitions  Json     @default("[]") @map("metafield_definitions")
+  locations             Json     @default("[]")
+  productTypes          Json     @default("[]") @map("product_types")
+  lastSyncedAt          DateTime? @map("last_synced_at")
+  settings              Json     @default("{}")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  shop                  Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("shop_configs")
+}
+
+model ShopifySession {
+  id          String    @id
+  shop        String
+  state       String
+  isOnline    Boolean   @default(false) @map("is_online")
+  scope       String?
+  expires     DateTime?
+  accessToken String?   @map("access_token")
+  userId      String?   @map("user_id")
+
+  @@index([shop])
+  @@map("shopify_sessions")
+}

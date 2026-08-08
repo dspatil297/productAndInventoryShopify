@@ -1,0 +1,225 @@
+{
+  "main": {
+    "id": "67bf319b1c6700c0",
+    "type": "split",
+    "children": [
+      {
+        "id": "84b02b31b4167892",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6acc0a03555423b7",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "node_modules/eslint-plugin-react/README.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "README"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "576e28dfbfad3669",
+    "type": "split",
+    "children": [
+      {
+        "id": "bfe7977596743579",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6fef364e3f15ffe2",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "c99c0c377a26023f",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "0e0da121c9a87237",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "782d505d757ed392",
+    "type": "split",
+    "children": [
+      {
+        "id": "a1431a39beff762f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "dfc9095fa0fef498",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "node_modules/eslint-plugin-jsx-a11y/README.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for README"
+            }
+          },
+          {
+            "id": "27f7874983518111",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "node_modules/eslint-plugin-jsx-a11y/README.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from README"
+            }
+          },
+          {
+            "id": "3de7cc292d9d34e5",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "f77531ca5ff81d05",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "9cb5f1b6e91e13d4",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "node_modules/eslint-plugin-jsx-a11y/README.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of README"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "6acc0a03555423b7",
+  "lastOpenFiles": [
+    "app/api/shops/[shopId]/import/template/route.ts",
+    "app/api/shops/[shopId]/import/template",
+    "app/api/shops/[shopId]/import/route.ts",
+    "app/api/shops/[shopId]/import",
+    "lib/products/publish-product.ts",
+    "scripts/verify/csv-selfcheck.mjs",
+    "docs/verification/phase-7-checklist.md",
+    "components/merchant/ProductImportPanel.tsx",
+    "app/merchant/products/new/page.tsx",
+    "app/merchant/products/new",
+    "components/merchant/ProductForm.tsx",
+    "app/api/shops/[shopId]/upload/staged/route.ts",
+    "node_modules/@unrs/resolver-binding-wasm32-wasi/node_modules/@emnapi/runtime/README.md",
+    "docs/verification/phase-6-checklist.md",
+    "docs/verification/phase-5-checklist.md",
+    "node_modules/fs-extra/README.md",
+    "docs/rules/jsx-no-bind.md",
+    "docs/verification/phase-4-checklist.md",
+    "docs/verification/phase-3-checklist.md",
+    "docs/verification/phase-0-checklist.md",
+    "docs/verification/phase-2-checklist.md",
+    "docs/verification/CHECKLIST-TEMPLATE.md",
+    "docs/verification/AGENT-PROTOCOL.md",
+    "node_modules/eslint-plugin-jsx-a11y/README.md",
+    "node_modules/next/dist/docs/02-pages/04-api-reference/01-components/head.md",
+    "node_modules/pg-protocol/README.md",
+    "node_modules/@prisma/driver-adapter-utils/README.md",
+    "node_modules/@types/pg/README.md",
+    "node_modules/@prisma/adapter-pg/README.md",
+    "node_modules/pg-cloudflare/README.md",
+    "node_modules/pg-connection-string/README.md",
+    "node_modules/pg-pool/README.md",
+    "node_modules/pgpass/README.md",
+    "node_modules/postgres-array/readme.md",
+    "node_modules/pg/README.md",
+    "node_modules/postgres-bytea/readme.md"
+  ]
+}

@@ -1,0 +1,25 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "a48902c859417cfa3b5aba419b49eb15"
+name = "FireFist Product and inventory"
+# Custom tunnel used with: shopify app dev --tunnel-url=https://ims.firefist.co.in:3000
+application_url = "https://ims.firefist.co.in"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  uri = "/api/webhooks/app-uninstalled"
+  topics = [ "app/uninstalled" ]
+
+[access_scopes]
+scopes = "read_products,write_products,read_inventory,write_inventory,read_locations,read_files,write_files,read_publications,write_publications,read_themes"
+
+[auth]
+redirect_urls = [
+  "https://ims.firefist.co.in/api/auth/callback",
+]

@@ -1,0 +1,20 @@
+---
+description: Single source of truth — read and maintain PROJECT.md every session
+alwaysApply: true
+---
+
+# Project context (mandatory)
+
+Before planning or writing code:
+
+1. Read `PROJECT.md` at repo root (especially **Current progress**, **Current phase**, **Agent rules**, **Section 16 skills**).
+2. Do not ask the user to paste PROJECT.md — you load it yourself.
+3. Work only the **current phase** unless the user explicitly changes scope.
+4. At phase start: from Section 16.4–16.5, **tell the user** any skills/plugins to install for **this phase only** (not future phases).
+5. After completing meaningful work, update `PROJECT.md` **Section 19 (Current progress)**:
+   - Check off completed items
+   - Set `Current phase` and `Last updated` date
+   - Add short `Notes` (blockers, decisions, files touched)
+6. After phase milestones, run `npm run verify:phase-<N>`, retry until all checks pass, log to `docs/verification/agent-log.md`, point user to `docs/verification/phase-<N>-checklist.md`. Read `docs/verification/AGENT-PROTOCOL.md`.
+7. Never run installs, `npm install`, `git push`, deploy, or DB migrations unless the user explicitly requests that command in this chat.
+Workspace: `G:\fire fist\shopify apps\products and inventory`

@@ -1,0 +1,66 @@
+---
+description: Auto-select Shopify and project skills — do not load unrelated skill packs
+alwaysApply: true
+---
+
+# Skills routing (use automatically)
+
+Read matching skill **before** implementing. Do not announce it — just apply.
+Full inventory + phase map: `PROJECT.md` **Section 16**.
+
+## Product context (always)
+
+Merchant Ops Platform: multi-tenant Shopify, encrypted shop tokens, agency + merchant login,
+products/metafields/inventory/import, smart forms + PDP preview, AI Excel (bulk only),
+light module shell. One Next.js deploy. Security max. No skill bloat.
+
+## Cursor Shopify plugin
+
+| Task | Skill |
+|------|-------|
+| Admin GraphQL | `shopify-admin` |
+| Metafields / metaobjects | `shopify-custom-data` |
+| CLI / TOML / `app dev` | `shopify-use-shopify-cli` |
+| Partner / onboarding | `shopify-onboarding-dev` |
+| Embedded Admin UI | `shopify-polaris-app-home` |
+| Theme / PDP metafields (Phase 11) | `shopify-liquid` |
+| Storefront preview URLs (Phase 11) | `shopify-storefront-graphql` |
+| App Store review | `shopify-app-store-review` |
+| General Shopify docs | `shopify-dev` |
+
+## Claude skills (core)
+
+| Task | Skill |
+|------|-------|
+| Shop isolation / every shop API | `saas-multi-tenant` |
+| Prisma | `prisma-expert` |
+| Next.js App Router | `nextjs-app-router-patterns`, `nextjs-best-practices` |
+| OAuth + merchant/agency login | `auth-implementation-patterns` |
+| API security / cookies / HMAC | `api-security-best-practices` |
+| Secrets / ENCRYPTION_KEY | `secrets-management` |
+| GraphQL patterns | `graphql` |
+| Zod validation | `zod-validation-expert` |
+| Dashboard UI | `shadcn`, `tailwind-design-system` |
+| TanStack Query | `tanstack-query-expert` |
+| Zustand | `zustand-store-ts` |
+| Deploy | `vercel-deployment` |
+| Postgres | `postgres-best-practices` |
+
+## By phase (read when user says Phase N)
+
+At phase start: check Section 16.5 in PROJECT.md — **tell user** any missing installs for **this phase only**, then read skills and code.
+
+| Phase | Skills |
+|-------|--------|
+| 8 | `nextjs-app-router-patterns`, `vercel-deployment`, `prisma-expert`, `shopify-custom-data`, `shadcn`, `saas-multi-tenant` |
+| 9 | `auth-implementation-patterns`, `api-security-best-practices`, `secrets-management`, `saas-multi-tenant`, `prisma-expert` |
+| 10 | `shopify-custom-data`, `zod-validation-expert`, `shadcn` |
+| 11 | `shopify-liquid`, `shopify-storefront-graphql`, `nextjs-app-router-patterns`, `shopify-custom-data` |
+| 12 | `xlsx-official`, `llm-structured-output` or `prompt-engineering`, `secrets-management`, `zod-validation-expert` — **remind user to install if missing** |
+| 13 | `saas-multi-tenant`, `nextjs-app-router-patterns` |
+| Later Coupons | `shopify-admin` |
+| Later SEO/Geo | `seo-audit` / `seo-technical` / `seo-geo` — remind user only when that work starts |
+
+## Do not load
+
+Azure, mobile, WordPress, pentest suites, SEO writer packs, mega agent-orchestration — unless user asks.
