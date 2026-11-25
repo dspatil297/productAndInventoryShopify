@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   ArrowLeftRight,
   Boxes,
   FileSpreadsheet,
+  Loader2,
   LogOut,
   Package,
   SlidersHorizontal,
@@ -29,7 +31,12 @@ export function MerchantDashboardNav({
   showSwitchStore = false,
 }: MerchantDashboardNavProps) {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const initial = shopName.trim().charAt(0).toUpperCase() || "S";
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
 
   return (
     <aside className="flex w-full shrink-0 flex-col border-b border-border bg-sidebar md:sticky md:top-0 md:h-screen md:w-60 md:border-r md:border-b-0">
@@ -66,31 +73,43 @@ export function MerchantDashboardNav({
       >
         {MODULE_LINKS.map((item) => {
           const isActive = pathname.startsWith(item.href);
+          const isPending = pendingHref === item.href && !isActive;
+          const highlighted = isActive || isPending;
           const Icon = item.icon;
 
           return (
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
+              onClick={() => {
+                if (!isActive) {
+                  setPendingHref(item.href);
+                }
+              }}
               className={`group relative flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
+                highlighted
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
               }`}
             >
-              {isActive ? (
+              {highlighted ? (
                 <span
                   aria-hidden="true"
                   className="absolute inset-y-1.5 left-0 hidden w-0.5 rounded-full bg-primary md:block"
                 />
               ) : null}
-              <Icon
-                className={`h-4 w-4 shrink-0 ${
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground group-hover:text-foreground"
-                }`}
-              />
+              {isPending ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+              ) : (
+                <Icon
+                  className={`h-4 w-4 shrink-0 ${
+                    highlighted
+                      ? "text-primary"
+                      : "text-muted-foreground group-hover:text-foreground"
+                  }`}
+                />
+              )}
               <span>{item.label}</span>
             </Link>
           );
