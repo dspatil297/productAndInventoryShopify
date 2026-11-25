@@ -12,7 +12,22 @@ function InstallExitIframeInner() {
     if (!shop) {
       return;
     }
-    window.open(authUrl, "_top");
+    let cancelled = false;
+    async function exitToAuth() {
+      // Wait briefly for App Bridge v4 to patch window.open for _top breakout
+      for (let i = 0; i < 15; i += 1) {
+        if (cancelled) return;
+        if ((window as unknown as { shopify?: unknown }).shopify) {
+          window.open(authUrl, "_top");
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 150));
+      }
+    }
+    void exitToAuth();
+    return () => {
+      cancelled = true;
+    };
   }, [authUrl, shop]);
 
   if (!shop) {
