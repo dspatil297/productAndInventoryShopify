@@ -5,14 +5,11 @@ import { useSearchParams } from "next/navigation";
 
 async function resolveBounceToken(
   idTokenFromUrl: string | null,
-): Promise<string | null> {
 ): Promise<{ token: string | null; diagnostic?: string }> {
   if (idTokenFromUrl) {
-    return idTokenFromUrl;
     return { token: idTokenFromUrl };
   }
 
-  for (let attempt = 0; attempt < 25; attempt += 1) {
   let lastErr = "";
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const shopify = (
@@ -26,11 +23,8 @@ async function resolveBounceToken(
         const resolved =
           typeof idToken === "function" ? await idToken() : await idToken;
         if (resolved && typeof resolved === "string" && resolved.length > 0) {
-          return resolved;
           return { token: resolved };
         }
-      } catch {
-        // App Bridge might still be handshaking, wait and retry
       } catch (err) {
         lastErr = err instanceof Error ? err.message : String(err);
       }
@@ -39,7 +33,6 @@ async function resolveBounceToken(
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
-  return null;
   const hasShopify =
     typeof (window as unknown as { shopify?: unknown }).shopify !== "undefined";
   const metaApiKey = document
@@ -98,7 +91,6 @@ function SessionTokenBounceInner() {
 
       let token = searchParams.get("id_token");
       if (!token) {
-        token = await resolveBounceToken(null);
         const result = await resolveBounceToken(null);
         token = result.token;
         if (!token) {
@@ -107,11 +99,6 @@ function SessionTokenBounceInner() {
           );
           return;
         }
-      }
-
-      if (!token) {
-        setError("Could not get session token. Reopen the app from Shopify Admin.");
-        return;
       }
 
       const target = new URL(reload, window.location.origin);
