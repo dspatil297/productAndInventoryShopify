@@ -66,8 +66,8 @@ interface ExcelMapJobRecord {
 }
 
 const JOB_TTL_MS = 60 * 60 * 1000;
-const PREVIEW_STALE_MS = 10 * 60 * 1000;
-const PREVIEW_TIMEOUT_MS = 8 * 60 * 1000;
+const PREVIEW_STALE_MS = 60 * 1000;
+const PREVIEW_TIMEOUT_MS = 30 * 1000;
 
 // ponytail: in-memory buffer cache; session drafts persisted in ShopConfig
 const jobs = new Map<string, ExcelMapJobRecord>();
@@ -459,21 +459,18 @@ export async function getExcelMapJob(
 
   const stored = await getImportSession(shopId, jobId);
   if (stored) {
-    if (
-      stored.status === "processing" &&
-      !jobs.get(jobId) &&
-      Date.now() - Date.parse(stored.updatedAt) > 3 * 60_000
-    ) {
+    if (stored.status === "processing" && !jobs.get(jobId)) {
       return {
         id: stored.id,
         status: "error",
-        error: "Preview interrupted — upload Excel again",
+        error: "Previous preview interrupted. Upload spreadsheet to start again.",
         downloadReady: false,
         importDone: false,
       };
     }
+    return storedSessionToPublic(stored);
   }
-  return storedSessionToPublic(stored);
+  return null;
 }
 
 export async function getExcelMapJobDownload(

@@ -54,8 +54,9 @@ export function linesToList(value: unknown, policy: ImportPolicy): string[] {
     return [];
   }
   const rows: string[] = [];
-  for (const chunk of text.split(/\n+/)) {
-    const item = chunk.replace(/^[-–—•]\s*/, "").trim();
+  // Split on newlines OR bullet symbols (•, ·, etc.)
+  for (const chunk of text.split(/(?:\r?\n)+|(?:\s*[•·]\s*)/)) {
+    const item = chunk.replace(/^[-–—•·]\s*/, "").trim();
     if (item && !isPlaceholder(policy, item)) {
       rows.push(item);
     }
@@ -70,10 +71,10 @@ export function commaToList(value: unknown, policy: ImportPolicy): string[] {
   }
   const seen = new Set<string>();
   const rows: string[] = [];
-  for (const chunk of text.split(/[,;\n]+/)) {
-    const item = chunk.trim();
-    if (item && !seen.has(item) && !isPlaceholder(policy, item)) {
-      seen.add(item);
+  for (const chunk of text.split(/[,;\r\n•·]+/)) {
+    const item = chunk.replace(/^[-–—•·]\s*/, "").trim();
+    if (item && !seen.has(item.toLowerCase()) && !isPlaceholder(policy, item)) {
+      seen.add(item.toLowerCase());
       rows.push(item);
     }
   }

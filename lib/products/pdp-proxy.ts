@@ -254,7 +254,10 @@ export function storefrontPasswordUnlockPage(input: {
   <p>Dev stores often lock the Online Store. Enter the same password as <strong>Enter using password</strong> on your shop. Saved for this browser session only.</p>
   ${error}
   <label style="display:block;margin-bottom:6px">Password</label>
-  <input type="password" name="password" required autocomplete="current-password" autofocus>
+  <div style="position:relative">
+    <input type="password" id="pw" name="password" required autocomplete="current-password" autofocus style="padding-right: 50px;">
+    <button type="button" onclick="const p=document.getElementById('pw'); const t=p.type==='password'; p.type=t?'text':'password'; this.textContent=t?'Hide':'Show'" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:auto; padding:4px 8px; margin:0; background:transparent; color:#64748b; font-size:12px; font-weight:600; cursor:pointer;">Show</button>
+  </div>
   <button type="submit">Unlock preview</button>
   ${live}
 </form>

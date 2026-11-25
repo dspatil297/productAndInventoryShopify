@@ -8,7 +8,7 @@ export const SHOP_QUERY = `
       currencyCode
       timezoneAbbreviation
       plan {
-        displayName
+        publicDisplayName
       }
       primaryDomain {
         url
@@ -113,8 +113,8 @@ export const PRODUCTS_LIST_QUERY = `
 `;
 
 export const PRODUCT_BY_HANDLE_QUERY = `
-  query ProductByHandle($handle: String!, $metafieldFirst: Int!) {
-    productByHandle(handle: $handle) {
+  query ProductByIdentifier($handle: String!, $metafieldFirst: Int!) {
+    productByIdentifier(identifier: { handle: $handle }) {
       id
       title
       handle

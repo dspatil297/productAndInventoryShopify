@@ -1,21 +1,18 @@
-"""Pick newest Excel per category in ProductData; normalize to canonical filenames."""
+"""Pick newest Excel per category in a data dir; normalize to canonical filenames.
+
+Now driven by store.json instead of hardcoded category names.
+"""
 
 from __future__ import annotations
 
 import shutil
 from pathlib import Path
 
-from paths import DATA_DIR
-
-CANONICAL_EXCELS: dict[str, tuple[str, ...]] = {
-    "Arthenic_Paintings_Data.xlsx": ("painting", "paintings"),
-    "Arthenic_Ethnic_Data.xlsx": ("ethnic",),
-    "Arthenic_Jewel_Data.xlsx": ("jewel", "jewellery", "jewelry"),
-    "Arthenic_Decor_Data.xlsx": ("decor",),
-}
+from store_config import StoreConfig, load_store_config
 
 
-def sync_product_data(data_dir: Path = DATA_DIR) -> list[str]:
+def sync_product_data(config: StoreConfig) -> list[str]:
+    data_dir = config.data_dir
     if not data_dir.is_dir():
         data_dir.mkdir(parents=True, exist_ok=True)
         return [f"Created {data_dir.name}/ — drop Excel files here"]
@@ -23,20 +20,20 @@ def sync_product_data(data_dir: Path = DATA_DIR) -> list[str]:
     log: list[str] = []
     all_xlsx = list(data_dir.glob("*.xlsx"))
 
-    for canonical, keywords in CANONICAL_EXCELS.items():
+    for cat in config.excel_categories:
         matches = [
             path
             for path in all_xlsx
-            if any(keyword in path.name.lower() for keyword in keywords)
+            if any(kw in path.name.lower() for kw in cat.keywords)
         ]
         if not matches:
             continue
 
         newest = max(matches, key=lambda path: path.stat().st_mtime)
-        target = data_dir / canonical
+        target = data_dir / cat.canonical_name
         if newest.resolve() != target.resolve():
             shutil.copy2(newest, target)
-            log.append(f"Synced {newest.name} → {canonical}")
+            log.append(f"Synced {newest.name} → {cat.canonical_name}")
 
         for path in matches:
             if path.resolve() == target.resolve():

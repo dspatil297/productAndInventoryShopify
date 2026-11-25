@@ -60,11 +60,13 @@ export async function runSpecImportPipeline(input: {
     mappingNotes = `mapping: heuristic (${reason})`;
   }
 
-  mapping = applyArthenicColumnProfile(input.table, mapping);
+  if (!usedAiMapping) {
+    mapping = applyArthenicColumnProfile(input.table, mapping);
+  }
   mapping = ensureCoreMappings(input.table, mapping);
 
   const arthenicTemplate = detectArthenicTemplate(input.table.headers);
-  if (arthenicTemplate) {
+  if (arthenicTemplate && !usedAiMapping) {
     mappingNotes = `${mappingNotes}; arthenic:${arthenicTemplate}`;
   }
   try {

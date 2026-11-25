@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""One command: Excel in ProductData/ → Shopify products + metafields."""
+"""One command: Excel in data dir → Shopify products + metafields.
+
+Usage:
+    # Use ProductData/ (default, reads store.json from there)
+    python upload_products.py
+
+    # Use a different store's folder
+    python upload_products.py --data-dir /path/to/StoreB/ProductData
+
+    # Dry run (no Shopify API calls)
+    python upload_products.py --dry-run
+"""
 
 from __future__ import annotations
 
@@ -16,11 +27,12 @@ from paths import (
     UPDATE_REPORT,
     UPLOAD_HANDLES_FILE,
     ensure_output_dir,
+    get_data_dir,
 )
+from store_config import load_store_config
 from sync_product_data import sync_product_data
 
 ROOT = Path(__file__).resolve().parent
-DEFAULT_STORE = "f1qzim-fc.myshopify.com"
 
 
 def run_script(name: str, *args: str) -> int:
@@ -36,12 +48,13 @@ def read_handles(path: Path) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Upload Arthenic products from ProductData Excel files")
-    parser.add_argument("--store", default=DEFAULT_STORE)
-    parser.add_argument("--token")
+    parser = argparse.ArgumentParser(description="Upload products from Excel to Shopify")
+    parser.add_argument("--data-dir", default=None, help="Path to store's ProductData folder (default: ProductData/)")
+    parser.add_argument("--store", default=None, help="Override store domain from store.json")
+    parser.add_argument("--token", default=None, help="Shopify Admin API token (optional; use --use-cli on Windows)")
     parser.add_argument("--dry-run", action="store_true", help="Build payloads only; no Shopify API")
-    parser.add_argument("--skip-create", action="store_true", help="Metafields only (products must exist)")
-    parser.add_argument("--use-cli", action="store_true", help="Use Shopify CLI auth (recommended on Windows)")
+    parser.add_argument("--skip-create", action="store_true", help="Metafields only (products must already exist)")
+    parser.add_argument("--use-cli", action="store_true", help="Use Shopify CLI auth (auto-enabled on Windows if no token)")
     args = parser.parse_args()
 
     if not args.token and sys.platform == "win32":
@@ -49,15 +62,18 @@ def main() -> int:
 
     if args.use_cli:
         import upload_metafields_shopify as meta
-
         meta._USE_CLI = True
 
+    data_dir = get_data_dir(args.data_dir)
+    config = load_store_config(data_dir)
+    store = args.store or config.store
+
     ensure_output_dir()
-    synced = sync_product_data()
+    synced = sync_product_data(config)
     for line in synced:
         print(line)
 
-    if run_script("build_product_import.py") != 0:
+    if run_script("build_product_import.py", "--data-dir", str(data_dir)) != 0:
         return 1
 
     handles = read_handles(UPLOAD_HANDLES_FILE)
@@ -66,7 +82,7 @@ def main() -> int:
         return 0
 
     if not args.dry_run and not args.skip_create and NEW_PRODUCTS_CSV.is_file():
-        create_args = ["--store", args.store]
+        create_args = ["--store", store]
         if args.token:
             create_args.extend(["--token", args.token])
         if args.use_cli:
@@ -75,7 +91,7 @@ def main() -> int:
             return 1
 
     if not args.dry_run:
-        update_args = ["--store", args.store, "--handles-file", str(UPLOAD_HANDLES_FILE)]
+        update_args = ["--store", store, "--handles-file", str(UPLOAD_HANDLES_FILE)]
         if args.token:
             update_args.extend(["--token", args.token])
         if args.use_cli:
@@ -83,10 +99,10 @@ def main() -> int:
         if run_script("update_products_shopify.py", *update_args) != 0:
             return 1
 
-    if run_script("build_story_json.py") != 0:
+    if run_script("build_story_json.py", "--data-dir", str(data_dir)) != 0:
         return 1
 
-    upload_args = ["--store", args.store, "--handles-file", str(UPLOAD_HANDLES_FILE)]
+    upload_args = ["--store", store, "--handles-file", str(UPLOAD_HANDLES_FILE)]
     if args.token:
         upload_args.extend(["--token", args.token])
     if args.dry_run:

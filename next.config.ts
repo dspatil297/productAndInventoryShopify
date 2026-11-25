@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
           ".trycloudflare.com",
           ".ngrok-free.app",
           ".ngrok.io",
+          "ims.firefist.co.in",
           ".firefist.co.in",
           "localhost",
         ]

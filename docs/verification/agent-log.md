@@ -5513,3 +5513,677 @@ User checklist: docs/verification/phase-12-checklist.md
 **Summary:** 7/7 checks passed
 **Status:** All automated checks passed
 User checklist: docs/verification/phase-12-checklist.md
+
+---
+
+## Run 2026-11-22T09:00:14.387Z — Phase 3 — Product list + search
+
+- ATTEMPT 1/3 — Required phase files
+- **PASS** — Required phase files
+- ATTEMPT 1/3 — node_modules present
+- **PASS** — node_modules present
+- ATTEMPT 1/3 — eslint
+
+---
+
+## Run 2026-11-22T11:31:36.654Z — Phase 12 — AI Excel mapper
+
+- ATTEMPT 1/3 — Required phase files
+- **PASS** — Required phase files
+- ATTEMPT 1/3 — .env.example documents required keys
+- **PASS** — .env.example documents required keys
+- ATTEMPT 1/3 — node_modules present
+- **PASS** — node_modules present
+- ATTEMPT 1/3 — eslint
+- FAIL — eslint: eslint exited 1
+> scaffold@0.1.0 lint
+> eslint
+
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\import\excel-map\jobs\[jobId]\confirm-redirect\route.ts
+  30:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\inventory\export\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\inventory\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\locations\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\metafield-definitions\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\metafields\export\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\metafields\route.ts
+  6:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\products\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx
+  71:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx:71:7
+  69 |   useEffect(() => {
+  70 |     if (initialSystemPrompt) {
+> 71 |       setPrompt(initialSystemPrompt);
+     |       ^^^^^^^^^ Avoid calling setState() directly within an effect
+  72 |     }
+  73 |   }, [initialSystemPrompt]);
+  74 |                                                                                                                                                                                                                react-hooks/set-state-in-effect
+  96:7  error  Error: Cannot access variable before it is declared
+
+`pollJob` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx:96:7
+  94 |   useEffect(() => {
+  95 |     if (initialJobId && isJobRunning(initialJob?.status)) {
+> 96 |       pollJob(initialJobId, Date.now());
+     |       ^^^^^^^ `pollJob` accessed before it is declared
+  97 |     }
+  98 |     // eslint-disable-next-line react-hooks/exhaustive-deps
+  99 |   }, [initialJobId]);
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx:174:3
+  172 |
+  173 |   // Poll Job Status
+> 174 |   const pollJob = (currentJobId: string, startTime: number) => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 175 |     setIsGenerating(true);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 176 |     if (pollTimerRef.current) {
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 234 |     void checkStatus();
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 235 |   };
+      | ^^^^^ `pollJob` is declared here
+  236 |
+  237 |   // Reset or clear current upload
+  238 |   const handleReset = () => {  react-hooks/immutability
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\DisableBrokenHmrScript.tsx
+  14:5  warning  `next/script`'s `beforeInteractive` strategy should not be used outside of `pages/_document.js`. See: https://nextjs.org/docs/messages/no-before-interactive-script-outside-document  @next/next/no-before-interactive-script-outside-document
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductForm.tsx
+  53:11  warning  '_shopId' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductImportPanel.tsx
+   4:8   warning  'Link' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  52:3   warning  'promptPackBuiltAt' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  60:23  warning  'setPackVersion' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  65:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductImportPanel.tsx:65:7
+  63 |   useEffect(() => {
+  64 |     if (initialTab) {
+> 65 |       setActiveTab(initialTab);
+     |       ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  66 |     }
+  67 |   }, [initialTab]);
+  68 |  react-hooks/set-state-in-effect
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductTable.tsx
+  79:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductTable.tsx:79:17
+  77 |   const deleteAction = `/api/shops/${shopId}/products/delete`;
+  78 |
+> 79 |   const table = useReactTable({
+     |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  80 |     data: products,
+  81 |     columns,
+  82 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\VisualProductFlow.tsx
+  11:10  warning  'themeSyncScopeError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\components\ui\password-input.tsx
+  7:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+G:\fire fist\shopify apps\products-and-inventory\lib\import\spec\mapping-ai.ts
+  361:85  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  370:85  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\fire fist\shopify apps\products-and-inventory\lib\import\spec\transforms.ts
+  6:15  warning  'ProductDraft' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\lib\products\theme-section-liquids.ts
+  112:3  warning  'templateFilename' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\lib\products\theme-templates.ts
+  11:10  warning  'themeSyncScopeError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\json-object.js
+   13:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+   50:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  335:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  463:16  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\pair-list.js
+  126:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\product-pdp-editor.js
+   15:12  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  160:16  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\tag-list.js
+  28:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\scripts\verify\structured-json-selfcheck.mjs
+  213:11  warning  'schema' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 33 problems (7 errors, 26 warnings)
+- ATTEMPT 2/3 — eslint
+- FAIL — eslint: eslint exited 1
+> scaffold@0.1.0 lint
+> eslint
+
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\import\excel-map\jobs\[jobId]\confirm-redirect\route.ts
+  30:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\inventory\export\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\inventory\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\locations\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\metafield-definitions\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\metafields\export\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\metafields\route.ts
+  6:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\products\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx
+  71:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx:71:7
+  69 |   useEffect(() => {
+  70 |     if (initialSystemPrompt) {
+> 71 |       setPrompt(initialSystemPrompt);
+     |       ^^^^^^^^^ Avoid calling setState() directly within an effect
+  72 |     }
+  73 |   }, [initialSystemPrompt]);
+  74 |                                                                                                                                                                                                                react-hooks/set-state-in-effect
+  96:7  error  Error: Cannot access variable before it is declared
+
+`pollJob` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx:96:7
+  94 |   useEffect(() => {
+  95 |     if (initialJobId && isJobRunning(initialJob?.status)) {
+> 96 |       pollJob(initialJobId, Date.now());
+     |       ^^^^^^^ `pollJob` accessed before it is declared
+  97 |     }
+  98 |     // eslint-disable-next-line react-hooks/exhaustive-deps
+  99 |   }, [initialJobId]);
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx:174:3
+  172 |
+  173 |   // Poll Job Status
+> 174 |   const pollJob = (currentJobId: string, startTime: number) => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 175 |     setIsGenerating(true);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 176 |     if (pollTimerRef.current) {
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 234 |     void checkStatus();
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 235 |   };
+      | ^^^^^ `pollJob` is declared here
+  236 |
+  237 |   // Reset or clear current upload
+  238 |   const handleReset = () => {  react-hooks/immutability
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\DisableBrokenHmrScript.tsx
+  14:5  warning  `next/script`'s `beforeInteractive` strategy should not be used outside of `pages/_document.js`. See: https://nextjs.org/docs/messages/no-before-interactive-script-outside-document  @next/next/no-before-interactive-script-outside-document
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductForm.tsx
+  53:11  warning  '_shopId' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductImportPanel.tsx
+   4:8   warning  'Link' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  52:3   warning  'promptPackBuiltAt' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  60:23  warning  'setPackVersion' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  65:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductImportPanel.tsx:65:7
+  63 |   useEffect(() => {
+  64 |     if (initialTab) {
+> 65 |       setActiveTab(initialTab);
+     |       ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  66 |     }
+  67 |   }, [initialTab]);
+  68 |  react-hooks/set-state-in-effect
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductTable.tsx
+  79:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductTable.tsx:79:17
+  77 |   const deleteAction = `/api/shops/${shopId}/products/delete`;
+  78 |
+> 79 |   const table = useReactTable({
+     |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  80 |     data: products,
+  81 |     columns,
+  82 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\VisualProductFlow.tsx
+  11:10  warning  'themeSyncScopeError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\components\ui\password-input.tsx
+  7:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+G:\fire fist\shopify apps\products-and-inventory\lib\import\spec\mapping-ai.ts
+  361:85  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  370:85  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\fire fist\shopify apps\products-and-inventory\lib\import\spec\transforms.ts
+  6:15  warning  'ProductDraft' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\lib\products\theme-section-liquids.ts
+  112:3  warning  'templateFilename' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\lib\products\theme-templates.ts
+  11:10  warning  'themeSyncScopeError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\json-object.js
+   13:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+   50:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  335:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  463:16  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\pair-list.js
+  126:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\product-pdp-editor.js
+   15:12  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  160:16  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\tag-list.js
+  28:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\scripts\verify\structured-json-selfcheck.mjs
+  213:11  warning  'schema' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 33 problems (7 errors, 26 warnings)
+- ATTEMPT 3/3 — eslint
+- FAIL — eslint: eslint exited 1
+> scaffold@0.1.0 lint
+> eslint
+
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\import\excel-map\jobs\[jobId]\confirm-redirect\route.ts
+  30:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\inventory\export\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\inventory\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\locations\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\metafield-definitions\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\metafields\export\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\metafields\route.ts
+  6:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\app\api\shops\[shopId]\products\route.ts
+  5:3  warning  'ShopApiAccessError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx
+  71:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx:71:7
+  69 |   useEffect(() => {
+  70 |     if (initialSystemPrompt) {
+> 71 |       setPrompt(initialSystemPrompt);
+     |       ^^^^^^^^^ Avoid calling setState() directly within an effect
+  72 |     }
+  73 |   }, [initialSystemPrompt]);
+  74 |                                                                                                                                                                                                                react-hooks/set-state-in-effect
+  96:7  error  Error: Cannot access variable before it is declared
+
+`pollJob` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx:96:7
+  94 |   useEffect(() => {
+  95 |     if (initialJobId && isJobRunning(initialJob?.status)) {
+> 96 |       pollJob(initialJobId, Date.now());
+     |       ^^^^^^^ `pollJob` accessed before it is declared
+  97 |     }
+  98 |     // eslint-disable-next-line react-hooks/exhaustive-deps
+  99 |   }, [initialJobId]);
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\AiImportSection.tsx:174:3
+  172 |
+  173 |   // Poll Job Status
+> 174 |   const pollJob = (currentJobId: string, startTime: number) => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 175 |     setIsGenerating(true);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 176 |     if (pollTimerRef.current) {
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 234 |     void checkStatus();
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 235 |   };
+      | ^^^^^ `pollJob` is declared here
+  236 |
+  237 |   // Reset or clear current upload
+  238 |   const handleReset = () => {  react-hooks/immutability
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\DisableBrokenHmrScript.tsx
+  14:5  warning  `next/script`'s `beforeInteractive` strategy should not be used outside of `pages/_document.js`. See: https://nextjs.org/docs/messages/no-before-interactive-script-outside-document  @next/next/no-before-interactive-script-outside-document
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductForm.tsx
+  53:11  warning  '_shopId' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductImportPanel.tsx
+   4:8   warning  'Link' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  52:3   warning  'promptPackBuiltAt' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  60:23  warning  'setPackVersion' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  65:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductImportPanel.tsx:65:7
+  63 |   useEffect(() => {
+  64 |     if (initialTab) {
+> 65 |       setActiveTab(initialTab);
+     |       ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  66 |     }
+  67 |   }, [initialTab]);
+  68 |  react-hooks/set-state-in-effect
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductTable.tsx
+  79:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\ProductTable.tsx:79:17
+  77 |   const deleteAction = `/api/shops/${shopId}/products/delete`;
+  78 |
+> 79 |   const table = useReactTable({
+     |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  80 |     data: products,
+  81 |     columns,
+  82 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+G:\fire fist\shopify apps\products-and-inventory\components\merchant\VisualProductFlow.tsx
+  11:10  warning  'themeSyncScopeError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\components\ui\password-input.tsx
+  7:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+G:\fire fist\shopify apps\products-and-inventory\lib\import\spec\mapping-ai.ts
+  361:85  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  370:85  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\fire fist\shopify apps\products-and-inventory\lib\import\spec\transforms.ts
+  6:15  warning  'ProductDraft' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\lib\products\theme-section-liquids.ts
+  112:3  warning  'templateFilename' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\lib\products\theme-templates.ts
+  11:10  warning  'themeSyncScopeError' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\json-object.js
+   13:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+   50:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  335:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  463:16  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\pair-list.js
+  126:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\product-pdp-editor.js
+   15:12  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  160:16  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\public\tag-list.js
+  28:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\fire fist\shopify apps\products-and-inventory\scripts\verify\structured-json-selfcheck.mjs
+  213:11  warning  'schema' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 33 problems (7 errors, 26 warnings)
+- ATTEMPT 1/3 — next build
+- FAIL — next build: next build exited 1
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of G:\fire fist\pnpm-lock.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * G:\fire fist\shopify apps\products-and-inventory\package-lock.json
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+Error: Can't resolve 'shadcn/tailwind.css' in 'G:\fire fist\shopify apps\products-and-inventory\app'
+    [2m[at finishWithoutResolve (G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:942:18)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1034:14][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m
+    [2m[at eval (eval at create (G:\fire fist\shopify apps\products-and-inventory\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m
+    [2m[at eval (eval at create (G:\fire fist\shopify apps\products-and-inventory\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:94:43][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m
+    [2m[at eval (eval at create (G:\fire fist\shopify apps\products-and-inventory\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m {
+  details: "resolve 'shadcn/tailwind.css' in 'G:\\fire fist\\shopify apps\\products-and-inventory\\app'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: G:\\fire fist\\shopify apps\\products-and-inventory\\package.json (relative path: ./app)\n' +
+    '    resolve as module\n' +
+    "      G:\\fire fist\\shopify apps\\products-and-inventory\\app\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in G:\\fire fist\\shopify apps\\products-and-inventory\\node_modules\n' +
+    "        G:\\fire fist\\shopify apps\\products-and-inventory\\node_modules\\shadcn doesn't exist\n" +
+    "      G:\\fire fist\\shopify apps\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in G:\\fire fist\\node_modules\n' +
+    "        G:\\fire fist\\node_modules\\shadcn doesn't exist\n" +
+    "      G:\\node_modules doesn't exist or is not a directory"
+}
+
+-----
+[1m[31mFATAL[39m[0m: An unexpected Turbopack error occurred. A panic log has been written to C:\Users\dspat\AppData\Local\Temp\next-panic-ad17af3cbaeee829bcdd3791e5943ee8.log.
+
+To help make Turbopack better, report this error by clicking here: https://bugs.nextjs.org/search?category=turbopack-error-report&title=Turbopack%20Error%3A%20failed%20to%20create%20junction%20point%20at%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5Cbcrypt-8c3d0e6e6443fac4%22%20pointing%20to%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5C..%5C%5C..%5C%5C..%5C%5C..%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5Cnode_modules%5C%5Cbcrypt%22&body=Turbopack%20version%3A%20%60v16.2.10%60%0ANext.js%20version%3A%20%600.0.0%60%0A%0AError%20message%3A%0A%60%60%60%0Afailed%20to%20create%20junction%20point%20at%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5Cbcrypt-8c3d0e6e6443fac4%22%20pointing%20to%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5C..%5C%5C..%5C%5C..%5C%5C..%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5Cnode_modules%5C%5Cbcrypt%22%0A%0ACaused%20by%3A%0A-%20creation%20of%20a%20new%20symbolic%20link%20or%20junction%20point%20failed%3A%20The%20file%20exists.%20%28os%20error%2080%29%0A-%20The%20file%20exists.%20%28os%20error%2080%29%0A%60%60%60&labels=Turbopack,Turbopack%20Panic%20Backtrace
+-----
+
+
+> Build error occurred
+Error [TurbopackInternalError]: failed to create junction point at "G:\\fire fist\\shopify apps\\products-and-inventory\\.next\\node_modules\\bcrypt-8c3d0e6e6443fac4" pointing to "G:\\fire fist\\shopify apps\\products-and-inventory\\.next\\node_modules\\..\\..\\..\\..\\shopify apps\\products-and-inventory\\node_modules\\bcrypt"
+
+Caused by:
+- creation of a new symbolic link or junction point failed: The file exists. (os error 80)
+- The file exists. (os error 80)
+    at ignore-listed frames {
+  type: 'TurbopackInternalError',
+  location: undefined
+}
+- ATTEMPT 2/3 — next build
+- FAIL — next build: next build exited 1
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of G:\fire fist\pnpm-lock.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * G:\fire fist\shopify apps\products-and-inventory\package-lock.json
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+Error: Can't resolve 'shadcn/tailwind.css' in 'G:\fire fist\shopify apps\products-and-inventory\app'
+    [2m[at finishWithoutResolve (G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:942:18)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1034:14][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m
+    [2m[at eval (eval at create (G:\fire fist\shopify apps\products-and-inventory\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m
+    [2m[at eval (eval at create (G:\fire fist\shopify apps\products-and-inventory\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:94:43][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m
+    [2m[at eval (eval at create (G:\fire fist\shopify apps\products-and-inventory\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m {
+  details: "resolve 'shadcn/tailwind.css' in 'G:\\fire fist\\shopify apps\\products-and-inventory\\app'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: G:\\fire fist\\shopify apps\\products-and-inventory\\package.json (relative path: ./app)\n' +
+    '    resolve as module\n' +
+    "      G:\\fire fist\\shopify apps\\products-and-inventory\\app\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in G:\\fire fist\\shopify apps\\products-and-inventory\\node_modules\n' +
+    "        G:\\fire fist\\shopify apps\\products-and-inventory\\node_modules\\shadcn doesn't exist\n" +
+    "      G:\\fire fist\\shopify apps\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in G:\\fire fist\\node_modules\n' +
+    "        G:\\fire fist\\node_modules\\shadcn doesn't exist\n" +
+    "      G:\\node_modules doesn't exist or is not a directory"
+}
+
+-----
+[1m[31mFATAL[39m[0m: An unexpected Turbopack error occurred. A panic log has been written to C:\Users\dspat\AppData\Local\Temp\next-panic-4692db13b703b80353e93c78441f731.log.
+
+To help make Turbopack better, report this error by clicking here: https://bugs.nextjs.org/search?category=turbopack-error-report&title=Turbopack%20Error%3A%20failed%20to%20create%20junction%20point%20at%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5Cpg-a618392521adf333%22%20pointing%20to%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5C..%5C%5C..%5C%5C..%5C%5C..%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5Cnode_modules%5C%5Cpg%22&body=Turbopack%20version%3A%20%60v16.2.10%60%0ANext.js%20version%3A%20%600.0.0%60%0A%0AError%20message%3A%0A%60%60%60%0Afailed%20to%20create%20junction%20point%20at%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5Cpg-a618392521adf333%22%20pointing%20to%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5C..%5C%5C..%5C%5C..%5C%5C..%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5Cnode_modules%5C%5Cpg%22%0A%0ACaused%20by%3A%0A-%20creation%20of%20a%20new%20symbolic%20link%20or%20junction%20point%20failed%3A%20The%20file%20exists.%20%28os%20error%2080%29%0A-%20The%20file%20exists.%20%28os%20error%2080%29%0A%60%60%60&labels=Turbopack,Turbopack%20Panic%20Backtrace
+-----
+
+
+> Build error occurred
+Error [TurbopackInternalError]: failed to create junction point at "G:\\fire fist\\shopify apps\\products-and-inventory\\.next\\node_modules\\pg-a618392521adf333" pointing to "G:\\fire fist\\shopify apps\\products-and-inventory\\.next\\node_modules\\..\\..\\..\\..\\shopify apps\\products-and-inventory\\node_modules\\pg"
+
+Caused by:
+- creation of a new symbolic link or junction point failed: The file exists. (os error 80)
+- The file exists. (os error 80)
+    at ignore-listed frames {
+  type: 'TurbopackInternalError',
+  location: undefined
+}
+- ATTEMPT 3/3 — next build
+- FAIL — next build: next build exited 1
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of G:\fire fist\pnpm-lock.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * G:\fire fist\shopify apps\products-and-inventory\package-lock.json
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+Error: Can't resolve 'shadcn/tailwind.css' in 'G:\fire fist\shopify apps\products-and-inventory\app'
+    [2m[at finishWithoutResolve (G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:942:18)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1034:14][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m
+    [2m[at eval (eval at create (G:\fire fist\shopify apps\products-and-inventory\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m
+    [2m[at eval (eval at create (G:\fire fist\shopify apps\products-and-inventory\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:94:43][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m
+    [2m[at eval (eval at create (G:\fire fist\shopify apps\products-and-inventory\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at G:\fire fist\shopify apps\products-and-inventory\node_modules\enhanced-resolve\lib\Resolver.js:1111:5][0m {
+  details: "resolve 'shadcn/tailwind.css' in 'G:\\fire fist\\shopify apps\\products-and-inventory\\app'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: G:\\fire fist\\shopify apps\\products-and-inventory\\package.json (relative path: ./app)\n' +
+    '    resolve as module\n' +
+    "      G:\\fire fist\\shopify apps\\products-and-inventory\\app\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in G:\\fire fist\\shopify apps\\products-and-inventory\\node_modules\n' +
+    "        G:\\fire fist\\shopify apps\\products-and-inventory\\node_modules\\shadcn doesn't exist\n" +
+    "      G:\\fire fist\\shopify apps\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in G:\\fire fist\\node_modules\n' +
+    "        G:\\fire fist\\node_modules\\shadcn doesn't exist\n" +
+    "      G:\\node_modules doesn't exist or is not a directory"
+}
+
+-----
+[1m[31mFATAL[39m[0m: An unexpected Turbopack error occurred. A panic log has been written to C:\Users\dspat\AppData\Local\Temp\next-panic-c671daf7f010385617568d7d05726923.log.
+
+To help make Turbopack better, report this error by clicking here: https://bugs.nextjs.org/search?category=turbopack-error-report&title=Turbopack%20Error%3A%20failed%20to%20create%20junction%20point%20at%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5Cpg-a618392521adf333%22%20pointing%20to%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5C..%5C%5C..%5C%5C..%5C%5C..%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5Cnode_modules%5C%5Cpg%22&body=Turbopack%20version%3A%20%60v16.2.10%60%0ANext.js%20version%3A%20%600.0.0%60%0A%0AError%20message%3A%0A%60%60%60%0Afailed%20to%20create%20junction%20point%20at%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5Cpg-a618392521adf333%22%20pointing%20to%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5C..%5C%5C..%5C%5C..%5C%5C..%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5Cnode_modules%5C%5Cpg%22%0A%0ACaused%20by%3A%0A-%20creation%20of%20a%20new%20symbolic%20link%20or%20junction%20point%20failed%3A%20The%20file%20exists.%20%28os%20error%2080%29%0A-%20The%20file%20exists.%20%28os%20error%2080%29%0A%60%60%60&labels=Turbopack,Turbopack%20Panic%20Backtrace
+-----
+
+
+> Build error occurred
+Error [TurbopackInternalError]: failed to create junction point at "G:\\fire fist\\shopify apps\\products-and-inventory\\.next\\node_modules\\pg-a618392521adf333" pointing to "G:\\fire fist\\shopify apps\\products-and-inventory\\.next\\node_modules\\..\\..\\..\\..\\shopify apps\\products-and-inventory\\node_modules\\pg"
+
+Caused by:
+- creation of a new symbolic link or junction point failed: The file exists. (os error 80)
+- The file exists. (os error 80)
+    at ignore-listed frames {
+  type: 'TurbopackInternalError',
+  location: undefined
+}
+- ATTEMPT 1/3 — Import mapper self-check
+- FAIL — Import mapper self-check: npm error code E403
+npm error 403 403 Forbidden - GET https://registry.npmjs.org/tsx
+npm error 403 In most cases, you or one of your dependencies are requesting
+npm error 403 a package version that is forbidden by your security policy, or
+npm error 403 on a server you do not have access to.
+npm error A complete log of this run can be found in: C:\Users\dspat\AppData\Local\npm-cache\_logs\2026-11-22T11_35_04_082Z-debug-0.log
+- ATTEMPT 2/3 — Import mapper self-check
+- FAIL — Import mapper self-check: npm error code E403
+npm error 403 403 Forbidden - GET https://registry.npmjs.org/tsx
+npm error 403 In most cases, you or one of your dependencies are requesting
+npm error 403 a package version that is forbidden by your security policy, or
+npm error 403 on a server you do not have access to.
+npm error A complete log of this run can be found in: C:\Users\dspat\AppData\Local\npm-cache\_logs\2026-11-22T11_35_08_872Z-debug-0.log
+- ATTEMPT 3/3 — Import mapper self-check
+- FAIL — Import mapper self-check: npm error code E403
+npm error 403 403 Forbidden - GET https://registry.npmjs.org/tsx
+npm error 403 In most cases, you or one of your dependencies are requesting
+npm error 403 a package version that is forbidden by your security policy, or
+npm error 403 on a server you do not have access to.
+npm error A complete log of this run can be found in: C:\Users\dspat\AppData\Local\npm-cache\_logs\2026-11-22T11_35_14_288Z-debug-0.log
+- ATTEMPT 1/3 — Excel pipeline self-check
+- **PASS** — Excel pipeline self-check
+**Summary:** 4/7 checks passed
+**Blockers:** eslint, next build, Import mapper self-check
+User checklist: docs/verification/phase-12-checklist.md

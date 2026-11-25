@@ -58,32 +58,45 @@ export async function fetchProductBaselineByHandle(
   shop: Shop,
   handle: string,
 ): Promise<ProductBaseline | null> {
-  const data = await shopifyGraphqlForShop<ProductByHandleResponse>(
-    shop,
-    PRODUCT_BY_HANDLE_QUERY,
-    { handle, metafieldFirst: METAFIELD_FIRST },
-  );
+  try {
+    const data = await Promise.race([
+      shopifyGraphqlForShop<ProductByHandleResponse>(
+        shop,
+        PRODUCT_BY_HANDLE_QUERY,
+        { handle, metafieldFirst: METAFIELD_FIRST },
+      ),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Baseline lookup timeout")), 2500),
+      ),
+    ]);
 
-  const product = data.productByHandle;
-  if (!product) {
+    const product = data.productByHandle;
+    if (!product) {
+      return null;
+    }
+
+    const variant = product.variants.nodes[0];
+    const metafields: Record<string, string> = {};
+    for (const node of product.metafields.nodes) {
+      metafields[`${node.namespace}.${node.key}`] = formatMetafieldValue(node);
+    }
+
+    return {
+      id: product.id,
+      handle: product.handle,
+      title: product.title,
+      body_html: product.descriptionHtml ?? "",
+      template_suffix: product.templateSuffix?.trim() ?? "",
+      price: variant?.price ?? "",
+      compare_at_price: variant?.compareAtPrice ?? "",
+      sku: variant?.sku ?? "",
+      metafields,
+    };
+  } catch (err) {
+    console.warn(
+      `[baseline] Shopify baseline lookup skipped for handle "${handle}":`,
+      err instanceof Error ? err.message : String(err),
+    );
     return null;
   }
-
-  const variant = product.variants.nodes[0];
-  const metafields: Record<string, string> = {};
-  for (const node of product.metafields.nodes) {
-    metafields[`${node.namespace}.${node.key}`] = formatMetafieldValue(node);
-  }
-
-  return {
-    id: product.id,
-    handle: product.handle,
-    title: product.title,
-    body_html: product.descriptionHtml ?? "",
-    template_suffix: product.templateSuffix?.trim() ?? "",
-    price: variant?.price ?? "",
-    compare_at_price: variant?.compareAtPrice ?? "",
-    sku: variant?.sku ?? "",
-    metafields,
-  };
 }

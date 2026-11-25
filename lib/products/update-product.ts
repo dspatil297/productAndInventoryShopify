@@ -19,6 +19,7 @@ export interface UpdateProductInput {
   productType?: string;
   vendor?: string;
   status?: "ACTIVE" | "DRAFT" | "ARCHIVED";
+  templateSuffix?: string | null;
   variantId?: string | null;
   price?: string;
   compareAtPrice?: string;
@@ -89,6 +90,9 @@ export async function updateShopProduct(
   }
   if (input.vendor !== undefined) {
     product.vendor = input.vendor.trim();
+  }
+  if (input.templateSuffix !== undefined) {
+    product.templateSuffix = input.templateSuffix?.trim() || null;
   }
 
   const data = await shopifyGraphqlForShop<ProductUpdateResponse>(

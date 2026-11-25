@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Merge Arthenic Excel product data into Shopify bulk-import CSV format."""
+"""Merge Excel product data into Shopify bulk-import CSV format.
+
+Driven by store.json in the data directory.
+"""
 
 from __future__ import annotations
 
+import argparse
 import csv
 import re
 import unicodedata
@@ -12,7 +16,6 @@ from pathlib import Path
 import pandas as pd
 
 from paths import (
-    DATA_DIR,
     EXPORT_PATH,
     OUTPUT_DIR,
     IMPORT_CSV,
@@ -21,7 +24,9 @@ from paths import (
     SAMPLE_PATH,
     UPLOAD_HANDLES_FILE,
     ensure_output_dir,
+    get_data_dir,
 )
+from store_config import StoreConfig, load_store_config
 
 ROOT = Path(__file__).resolve().parent
 OUTPUT_PATH = IMPORT_CSV
@@ -32,12 +37,27 @@ COMMON_SKIP = {"common", "nan", "none", "as per the pictures", "same questions a
 
 SALE_MULTIPLIER = Decimal("0.95")
 
-CATEGORY_BY_TEMPLATE = {
-    "paintings": "painting",
-    "ethnic-wear": "ethnic",
-    "jewellery": "jewellery",
-    "sculpture": "decor",
-}
+# Store-specific values (overridden at runtime from store.json via _config)
+_config: StoreConfig | None = None
+
+
+def _get_config() -> StoreConfig:
+    if _config is None:
+        raise RuntimeError("build_product_import: call set_store_config() before use")
+    return _config
+
+
+def set_store_config(config: StoreConfig) -> None:
+    global _config, DATA_DIR, CATEGORY_BY_TEMPLATE, FROZEN_FIELDS
+    _config = config
+    DATA_DIR = config.data_dir
+    CATEGORY_BY_TEMPLATE = config.category_by_template
+    FROZEN_FIELDS = config.frozen_fields
+
+
+# Defaults (used when running standalone with store.json present)
+DATA_DIR = ROOT / "ProductData"
+CATEGORY_BY_TEMPLATE: dict[str, str] = {}
 
 # Never overwrite from Excel — keep existing Shopify export values (especially images).
 FROZEN_FIELDS = frozenset(
@@ -1193,4 +1213,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Build Shopify import CSV from Excel data")
+    parser.add_argument("--data-dir", default=None, help="Path to store's ProductData folder")
+    args = parser.parse_args()
+    data_dir = get_data_dir(args.data_dir)
+    config = load_store_config(data_dir)
+    set_store_config(config)
     main()

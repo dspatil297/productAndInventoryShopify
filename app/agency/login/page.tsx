@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AgencyLoginForm } from "@/components/agency/AgencyLoginForm";
 
 export default function AgencyLoginPage() {
@@ -10,6 +11,12 @@ export default function AgencyLoginPage() {
         </p>
         <div className="mt-6">
           <AgencyLoginForm />
+        </div>
+        <div className="mt-6 border-t border-border pt-4 text-center text-xs text-muted-foreground">
+          Store merchant or staff?{" "}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Go to Merchant Login &rarr;
+          </Link>
         </div>
       </div>
     </main>

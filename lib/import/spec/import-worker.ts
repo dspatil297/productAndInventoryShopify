@@ -92,6 +92,7 @@ export async function runImportWorker(
         title: draft.title ?? draft.handle,
         handle: draft.handle,
         descriptionHtml: draft.body_html,
+        templateSuffix: draft.template_suffix ?? undefined,
         price: variant?.price,
         compareAtPrice: variant?.compare_at_price,
         sku: variant?.sku,

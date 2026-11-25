@@ -7,6 +7,7 @@ import {
   type MerchantAuthFormState,
 } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/ui/password-input";
 
 interface MerchantRegisterFormProps {
   returnTo: string;
@@ -89,14 +90,12 @@ export const MerchantRegisterForm = ({
         <label htmlFor="password" className="text-sm font-medium">
           Password
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           minLength={8}
           required
-          className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         />
         <p className="text-xs text-muted-foreground">
           At least 8 characters. Same password links this email to more stores.

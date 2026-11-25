@@ -76,9 +76,11 @@ export async function buildPreviewDiffs(
   const preview: PreviewRowDiff[] = [];
   const nextDrafts: ProductDraft[] = [];
 
+  // Cap baseline lookups for fast preview generation (preview only displays top 15 rows)
   const baselineHandles = drafts
     .filter((draft) => draft.errors.length === 0)
-    .map((draft) => draft.handle);
+    .map((draft) => draft.handle)
+    .slice(0, 5);
   const baselines = await prefetchBaselines(shop, baselineHandles);
 
   for (const draft of drafts) {

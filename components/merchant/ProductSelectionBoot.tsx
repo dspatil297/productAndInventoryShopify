@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 /**
  * Cross-page product selection via sessionStorage + native DOM.
  */
@@ -10,106 +14,151 @@ export function ProductSelectionBoot({
   rowCount: number;
   formId: string;
 }) {
-  const boot = `
-(function(){
-  var KEY=${JSON.stringify(storageKey)};
-  var FORM_ID=${JSON.stringify(formId)};
-  function load(){
-    try{return JSON.parse(sessionStorage.getItem(KEY)||"{}");}catch(e){return{};}
-  }
-  function save(map){sessionStorage.setItem(KEY,JSON.stringify(map));}
-  function count(){return Object.keys(load()).length;}
-  function renderCount(){
-    var el=document.getElementById("prod-sel-count");
-    if(!el)return;
-    var n=count();
-    el.textContent=n?(n+" selected across pages"):"None selected";
-  }
-  function restorePage(){
-    var map=load();
-    document.querySelectorAll("[data-prod-pick]").forEach(function(el){
-      var id=el.getAttribute("data-prod-id");
-      el.checked=!!(id&&map[id]);
-    });
-    renderCount();
-  }
-  window.__prodSel={
-    selectPage:function(){
-      var map=load();
-      document.querySelectorAll("[data-prod-pick]").forEach(function(el){
-        el.checked=true;
-        var id=el.getAttribute("data-prod-id");
-        if(id)map[id]=id;
-      });
-      save(map);renderCount();
-    },
-    clearAll:function(){
-      save({});
-      document.querySelectorAll("[data-prod-pick]").forEach(function(el){el.checked=false;});
-      renderCount();
-    },
-    injectPicks:function(form){
-      form.querySelectorAll("[data-prod-injected]").forEach(function(n){n.remove();});
-      var map=load();
-      Object.keys(map).forEach(function(id){
-        var input=document.createElement("input");
-        input.type="hidden";
-        input.name="pick";
-        input.value=map[id];
-        input.setAttribute("data-prod-injected","1");
-        form.appendChild(input);
-      });
-      return Object.keys(map).length;
-    }
-  };
-  document.addEventListener("change",function(ev){
-    var t=ev.target;
-    if(!t||!t.getAttribute||t.getAttribute("data-prod-pick")!=="1")return;
-    var map=load();
-    var id=t.getAttribute("data-prod-id");
-    if(!id)return;
-    if(t.checked)map[id]=id;
-    else delete map[id];
-    save(map);renderCount();
-  });
-  document.addEventListener("submit",function(ev){
-    var form=ev.target;
-    if(!form||form.id!==FORM_ID)return;
-    var n=window.__prodSel.injectPicks(form);
-    if(!n){
-      ev.preventDefault();
-      alert("Select at least one product first (can span pages).");
-      return;
-    }
-    if(!confirm("Permanently delete selected products? This cannot be undone.")){
-      ev.preventDefault();
-    }
-  });
-  if(/[?&]deleted=/.test(location.search)){
-    save({});
-  }
-  if(document.readyState==="loading"){
-    document.addEventListener("DOMContentLoaded",restorePage);
-  }else{
-    restorePage();
-  }
-})();`;
+  const [selectedCount, setSelectedCount] = useState<number>(0);
 
-  const selectBtn = `<button type="button" class="rounded-md border border-border px-3 py-1.5 text-sm" ${
-    rowCount === 0 ? "disabled" : ""
-  } onclick="window.__prodSel&&window.__prodSel.selectPage()">Select all on page (${rowCount})</button>`;
-  const clearBtn = `<button type="button" class="rounded-md border border-border px-3 py-1.5 text-sm" onclick="window.__prodSel&&window.__prodSel.clearAll()">Clear all selected</button>`;
+  useEffect(() => {
+    function load(): Record<string, string> {
+      try {
+        return JSON.parse(sessionStorage.getItem(storageKey) || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function save(map: Record<string, string>) {
+      sessionStorage.setItem(storageKey, JSON.stringify(map));
+    }
+
+    function renderCount() {
+      const n = Object.keys(load()).length;
+      setSelectedCount(n);
+      const el = document.getElementById("prod-sel-count");
+      if (el) {
+        el.textContent = n ? `${n} selected across pages` : "None selected";
+      }
+    }
+
+    function restorePage() {
+      const map = load();
+      document.querySelectorAll<HTMLInputElement>("[data-prod-pick]").forEach((el) => {
+        const id = el.getAttribute("data-prod-id");
+        el.checked = !!(id && map[id]);
+      });
+      renderCount();
+    }
+
+    const prodSel = {
+      selectPage() {
+        const map = load();
+        document.querySelectorAll<HTMLInputElement>("[data-prod-pick]").forEach((el) => {
+          el.checked = true;
+          const id = el.getAttribute("data-prod-id");
+          if (id) map[id] = id;
+        });
+        save(map);
+        renderCount();
+      },
+      clearAll() {
+        save({});
+        document.querySelectorAll<HTMLInputElement>("[data-prod-pick]").forEach((el) => {
+          el.checked = false;
+        });
+        save({});
+        renderCount();
+      },
+      injectPicks(form: HTMLFormElement) {
+        form.querySelectorAll("[data-prod-injected]").forEach((n) => n.remove());
+        const map = load();
+        Object.keys(map).forEach((id) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = "pick";
+          input.value = map[id];
+          input.setAttribute("data-prod-injected", "1");
+          form.appendChild(input);
+        });
+        return Object.keys(map).length;
+      },
+    };
+
+    (window as unknown as { __prodSel: typeof prodSel }).__prodSel = prodSel;
+
+    function handleChange(ev: Event) {
+      const t = ev.target as HTMLInputElement | null;
+      if (!t || t.getAttribute?.("data-prod-pick") !== "1") return;
+      const map = load();
+      const id = t.getAttribute("data-prod-id");
+      if (!id) return;
+      if (t.checked) map[id] = id;
+      else delete map[id];
+      save(map);
+      renderCount();
+    }
+
+    function handleSubmit(ev: Event) {
+      const form = ev.target as HTMLFormElement | null;
+      if (!form || form.id !== formId) return;
+      const n = prodSel.injectPicks(form);
+      if (!n) {
+        ev.preventDefault();
+        alert("Select at least one product first (can span pages).");
+        return;
+      }
+      if (
+        !confirm(
+          `Delete ${n} selected product(s) across all pages? This permanently deletes them from Shopify.`,
+        )
+      ) {
+        ev.preventDefault();
+      }
+    }
+
+    if (/[?&]deleted=/.test(window.location.search)) {
+      save({});
+    }
+
+    restorePage();
+
+    document.addEventListener("change", handleChange);
+    document.addEventListener("submit", handleSubmit);
+
+    return () => {
+      document.removeEventListener("change", handleChange);
+      document.removeEventListener("submit", handleSubmit);
+    };
+  }, [storageKey, formId]);
 
   return (
-    <>
-      <script dangerouslySetInnerHTML={{ __html: boot }} />
-      <div className="flex flex-wrap items-center gap-2">
-        <div dangerouslySetInnerHTML={{ __html: selectBtn }} />
-        <div dangerouslySetInnerHTML={{ __html: clearBtn }} />
-        <span id="prod-sel-count" className="text-sm text-muted-foreground">
-          None selected
-        </span>
-      </div>
-    </>
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        className="rounded-md border border-border px-3 py-1.5 text-sm disabled:opacity-50"
+        disabled={rowCount === 0}
+        onClick={() => {
+          (window as unknown as { __prodSel?: { selectPage: () => void } }).__prodSel?.selectPage();
+        }}
+      >
+        Select all on page ({rowCount})
+      </button>
+      <button
+        type="button"
+        className="rounded-md border border-border px-3 py-1.5 text-sm"
+        onClick={() => {
+          (window as unknown as { __prodSel?: { clearAll: () => void } }).__prodSel?.clearAll();
+        }}
+      >
+        Clear all selected
+      </button>
+      <span
+        id="prod-sel-count"
+        className={`text-sm ${
+          selectedCount > 0
+            ? "rounded-md bg-amber-500/15 px-2.5 py-1 font-medium text-amber-600 dark:text-amber-400"
+            : "text-muted-foreground"
+        }`}
+      >
+        {selectedCount > 0 ? `${selectedCount} selected across pages` : "None selected"}
+      </span>
+    </div>
   );
 }

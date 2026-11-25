@@ -1,0 +1,43 @@
+{
+  "store": "f1qzim-fc.myshopify.com",
+  "vendor": "Arthenic",
+  "sale_multiplier": 0.95,
+  "excel_categories": {
+    "Arthenic_Paintings_Data.xlsx": {
+      "keywords": ["painting", "paintings"],
+      "template": "paintings",
+      "category": "painting",
+      "type": "painting"
+    },
+    "Arthenic_Ethnic_Data.xlsx": {
+      "keywords": ["ethnic"],
+      "template": "ethnic-wear",
+      "category": "ethnic",
+      "type": "ethnic"
+    },
+    "Arthenic_Jewel_Data.xlsx": {
+      "keywords": ["jewel", "jewellery", "jewelry"],
+      "template": "jewellery",
+      "category": "jewellery",
+      "type": "jewellery"
+    },
+    "Arthenic_Decor_Data.xlsx": {
+      "keywords": ["decor"],
+      "template": "sculpture",
+      "category": "decor",
+      "type": "decor"
+    }
+  },
+  "frozen_fields": [
+    "Image Src", "Image Position", "Image Alt Text", "Variant Image",
+    "Variant SKU", "Variant Grams", "Variant Inventory Tracker",
+    "Variant Inventory Qty", "Variant Inventory Policy",
+    "Variant Fulfillment Service", "Variant Barcode",
+    "Variant Requires Shipping", "Variant Taxable", "Variant Weight Unit",
+    "Variant Tax Code", "Cost per item", "Product Category",
+    "Published", "Vendor", "Gift Card", "Status",
+    "Option1 Name", "Option1 Value", "Option2 Name", "Option2 Value",
+    "Option3 Name", "Option3 Value", "SEO Title", "SEO Description"
+  ],
+  "metafield_namespaces": ["custom", "arthenic"]
+}

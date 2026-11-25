@@ -69,21 +69,28 @@ function getAiImportConfig(): {
   model: string;
   baseUrl: string;
 } {
+  const isOpenRouter = Boolean(process.env.OPENROUTER_API_KEY?.trim());
   const apiKey =
+    process.env.OPENROUTER_API_KEY?.trim() ||
     process.env.AI_IMPORT_API_KEY?.trim() ||
     process.env.OPENAI_API_KEY?.trim() ||
     "";
   if (!apiKey) {
     throw new AiImportConfigError(
-      "AI_IMPORT_API_KEY (or OPENAI_API_KEY) is not set",
+      "OPENROUTER_API_KEY (or AI_IMPORT_API_KEY / OPENAI_API_KEY) is not set",
     );
   }
+
+  const defaultBaseUrl = isOpenRouter
+    ? "https://openrouter.ai/api/v1/chat/completions"
+    : "https://api.openai.com/v1/chat/completions";
+
+  const defaultModel = isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini";
+
   return {
     apiKey,
-    model: process.env.AI_IMPORT_MODEL?.trim() || "gpt-4o-mini",
-    baseUrl:
-      process.env.AI_IMPORT_BASE_URL?.trim() ||
-      "https://api.openai.com/v1/chat/completions",
+    model: process.env.AI_IMPORT_MODEL?.trim() || defaultModel,
+    baseUrl: process.env.AI_IMPORT_BASE_URL?.trim() || defaultBaseUrl,
   };
 }
 
@@ -285,7 +292,7 @@ export function heuristicMappingConfig(
   };
 }
 
-const AI_MAPPING_TIMEOUT_MS = 90_000;
+const AI_MAPPING_TIMEOUT_MS = 12_000;
 
 export async function suggestMappingConfigWithAi(input: {
   table: ExcelTable;
@@ -343,6 +350,37 @@ export async function suggestMappingConfigWithAi(input: {
     parsed = JSON.parse(content);
   } catch {
     throw new AiImportMapError("AI mapping returned invalid JSON");
+  }
+
+  // Normalize common LLM output structures
+  if (parsed && typeof parsed === "object") {
+    const raw = parsed as Record<string, unknown>;
+    if (Array.isArray(raw.column_map)) {
+      const map: Record<string, unknown> = {};
+      for (const item of raw.column_map) {
+        if (item && typeof item === "object" && "source" in item && typeof (item as Record<string, unknown>).source === "string") {
+          const { source, ...rest } = item as Record<string, unknown>;
+          map[source as string] = rest;
+        }
+      }
+      raw.column_map = map;
+    } else if (Array.isArray(raw.mappings)) {
+      const map: Record<string, unknown> = {};
+      for (const item of raw.mappings) {
+        if (item && typeof item === "object" && "source" in item && typeof (item as Record<string, unknown>).source === "string") {
+          const { source, ...rest } = item as Record<string, unknown>;
+          map[source as string] = rest;
+        }
+      }
+      raw.column_map = map;
+    } else if (!raw.column_map) {
+      // Check if the root object itself is the column_map
+      const headerSet = new Set(input.table.headers);
+      const isDirectMap = Object.keys(raw).some((key) => headerSet.has(key));
+      if (isDirectMap) {
+        raw.column_map = { ...raw };
+      }
+    }
   }
 
   const validated = mappingConfigSchema.safeParse(parsed);

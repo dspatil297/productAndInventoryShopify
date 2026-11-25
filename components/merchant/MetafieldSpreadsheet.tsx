@@ -237,8 +237,12 @@ export function MetafieldSpreadsheet({
             </table>
           </div>
 
-          <div className="flex justify-end">
-            <button type="submit" className="mf-btn-primary">
+          <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/40 bg-card/95 p-4 shadow-lg backdrop-blur">
+            <div className="text-sm">
+              <span className="font-semibold text-foreground">Save Metafield Edits</span>
+              <span className="ml-2 text-muted-foreground">Changes on this page must be saved before leaving.</span>
+            </div>
+            <button type="submit" className="mf-btn-primary shadow-sm">
               Save changes on this page
             </button>
           </div>

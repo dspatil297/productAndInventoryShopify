@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MerchantLoginForm } from "@/components/merchant/MerchantLoginForm";
 import { countMerchantUsersForShop } from "@/lib/db/merchant-users";
 import { getShopWithConfig } from "@/lib/db/shops";
@@ -89,6 +90,12 @@ export default async function MerchantLoginPage({
             defaultEmail={defaultEmail}
             hasUsers={hasUsers}
           />
+        </div>
+        <div className="mt-6 border-t border-border pt-4 text-center text-xs text-muted-foreground">
+          Agency owner or operator?{" "}
+          <Link href="/agency/login" className="font-medium text-primary hover:underline">
+            Go to Agency Login &rarr;
+          </Link>
         </div>
       </div>
     </main>

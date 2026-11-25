@@ -35,22 +35,28 @@ function getAiImportConfig(): {
   model: string;
   baseUrl: string;
 } {
+  const isOpenRouter = Boolean(process.env.OPENROUTER_API_KEY?.trim());
   const apiKey =
+    process.env.OPENROUTER_API_KEY?.trim() ||
     process.env.AI_IMPORT_API_KEY?.trim() ||
     process.env.OPENAI_API_KEY?.trim() ||
     "";
   if (!apiKey) {
     throw new AiImportConfigError(
-      "AI_IMPORT_API_KEY (or OPENAI_API_KEY) is not set",
+      "OPENROUTER_API_KEY (or AI_IMPORT_API_KEY / OPENAI_API_KEY) is not set",
     );
   }
 
+  const defaultBaseUrl = isOpenRouter
+    ? "https://openrouter.ai/api/v1/chat/completions"
+    : "https://api.openai.com/v1/chat/completions";
+
+  const defaultModel = isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini";
+
   return {
     apiKey,
-    model: process.env.AI_IMPORT_MODEL?.trim() || "gpt-4o-mini",
-    baseUrl:
-      process.env.AI_IMPORT_BASE_URL?.trim() ||
-      "https://api.openai.com/v1/chat/completions",
+    model: process.env.AI_IMPORT_MODEL?.trim() || defaultModel,
+    baseUrl: process.env.AI_IMPORT_BASE_URL?.trim() || defaultBaseUrl,
   };
 }
 

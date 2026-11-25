@@ -234,9 +234,49 @@ function bindEthnicProfile(
     transform: "sale_from_list",
     transform_params: { multiplier: 0.95 },
   });
-  bindColumn(table, column_map, ["one liner", "one-liner"], {
+  bindColumn(table, column_map, ["one liner", "one-liner", "short description", "description"], {
     target: "body_html",
     transform: "html_paragraphs",
+  });
+
+  const detailColumns: Array<[string[], string]> = [
+    [["outfit type"], "Outfit type"],
+    [["fabric"], "Fabric"],
+    [["color"], "Color"],
+    [["craft technique", "work style"], "Craft technique"],
+    [["pattern"], "Pattern"],
+    [["fit", "sleeve style"], "Style"],
+    [["occasion"], "Occasion"],
+    [["origin"], "Origin"],
+    [["weight"], "Weight"],
+  ];
+  for (const [candidates, label] of detailColumns) {
+    bindColumn(table, column_map, candidates, kvDetailMapping(label));
+  }
+
+  bindColumn(table, column_map, ["whats included", "what's included"], {
+    ...metafieldMapping("custom", "product_whats_included", "lines_to_list"),
+  });
+  bindColumn(table, column_map, ["care instruction", "care instructions"], {
+    ...metafieldMapping("custom", "product_care_instructions", "lines_to_list"),
+  });
+  bindColumn(table, column_map, ["artisan impact"], {
+    ...metafieldMapping("custom", "product_impact_stats", "impact_stats"),
+  });
+  bindColumn(table, column_map, ["the curation story", "the maker", "curation story"], {
+    ...metafieldMapping("custom", "product_maker_story", "story_maker_json"),
+  });
+  bindColumn(table, column_map, ["the tradition", "the heritage", "heritage story"], {
+    ...metafieldMapping("custom", "product_heritage_story", "story_heritage_json"),
+  });
+  bindColumn(table, column_map, ["color"], {
+    ...metafieldMapping("custom", "filter_color", "clean_text"),
+  });
+  bindColumn(table, column_map, ["fabric"], {
+    ...metafieldMapping("custom", "filter_fabric", "clean_text"),
+  });
+  bindColumn(table, column_map, ["occasion"], {
+    ...metafieldMapping("custom", "filter_occasion", "comma_to_list"),
   });
 }
 
@@ -253,9 +293,49 @@ function bindJewelleryProfile(
     transform: "sale_from_list",
     transform_params: { multiplier: 0.95 },
   });
-  bindColumn(table, column_map, ["one liner", "one-liner"], {
+  bindColumn(table, column_map, ["one liner", "one-liner", "description", "short description"], {
     target: "body_html",
     transform: "html_paragraphs",
+  });
+
+  const detailColumns: Array<[string[], string]> = [
+    [["jewellery type", "jewelry type"], "Jewellery type"],
+    [["base material", "material"], "Base material"],
+    [["planting", "plating"], "Plating"],
+    [["stones", "stone type"], "Stones"],
+    [["closure type", "closure"], "Closure"],
+    [["craft tradition"], "Craft tradition"],
+    [["occasion"], "Occasion"],
+    [["weight"], "Weight"],
+    [["finish"], "Finish"],
+  ];
+  for (const [candidates, label] of detailColumns) {
+    bindColumn(table, column_map, candidates, kvDetailMapping(label));
+  }
+
+  bindColumn(table, column_map, ["whats included", "what's included"], {
+    ...metafieldMapping("custom", "product_whats_included", "lines_to_list"),
+  });
+  bindColumn(table, column_map, ["care instruction", "care instructions"], {
+    ...metafieldMapping("custom", "product_care_instructions", "lines_to_list"),
+  });
+  bindColumn(table, column_map, ["artisan impact"], {
+    ...metafieldMapping("custom", "product_impact_stats", "impact_stats"),
+  });
+  bindColumn(table, column_map, ["the curation story", "the maker", "curation story"], {
+    ...metafieldMapping("custom", "product_maker_story", "story_maker_json"),
+  });
+  bindColumn(table, column_map, ["the tradition", "the heritage", "heritage story"], {
+    ...metafieldMapping("custom", "product_heritage_story", "story_heritage_json"),
+  });
+  bindColumn(table, column_map, ["jewellery type", "jewelry type"], {
+    ...metafieldMapping("custom", "filter_jewelry_type", "clean_text"),
+  });
+  bindColumn(table, column_map, ["base material", "material"], {
+    ...metafieldMapping("custom", "filter_material", "clean_text"),
+  });
+  bindColumn(table, column_map, ["occasion"], {
+    ...metafieldMapping("custom", "filter_occasion", "comma_to_list"),
   });
 }
 

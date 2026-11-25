@@ -45,7 +45,22 @@ function returnToWithJob(returnTo: string, jobId: string): string {
 
 export async function POST(request: Request, context: RouteContext) {
   const { shopId } = await context.params;
-  const formData = await request.formData();
+  const isJson =
+    request.headers.get("accept")?.includes("application/json") ||
+    request.headers.get("x-json-response") === "1";
+
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    if (isJson) {
+      return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+    }
+    return redirectAfterForm(request, "/merchant/import?tab=ai", {
+      error: "Invalid form upload",
+    });
+  }
+
   const returnTo = safeProductReturnTo(
     formData.get("returnTo"),
     "/merchant/import?tab=ai",
@@ -60,27 +75,63 @@ export async function POST(request: Request, context: RouteContext) {
     const pack = await ensureImportPromptPack(shop.id, definitions, storedPack);
 
     const file = formData.get("file");
-    if (!(file instanceof File) || file.size === 0) {
+    const isFileLike = Boolean(
+      file &&
+      typeof file === "object" &&
+      "size" in file &&
+      typeof (file as Blob).size === "number" &&
+      (file as Blob).size > 0 &&
+      typeof (file as Blob).arrayBuffer === "function",
+    );
+    if (!isFileLike) {
+      if (isJson) {
+        return NextResponse.json(
+          { error: "Choose a spreadsheet file (.xlsx or .csv)" },
+          { status: 400 },
+        );
+      }
       return redirectAfterForm(request, returnTo, {
-        error: "Choose an Excel file (.xlsx)",
-      });
-    }
-    if (file.size > MAX_EXCEL_BYTES) {
-      return redirectAfterForm(request, returnTo, {
-        error: "Excel file too large (max 8 MB)",
+        error: "Choose a spreadsheet file (.xlsx or .csv)",
       });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const uploadBlob = file as Blob;
+    if (uploadBlob.size > MAX_EXCEL_BYTES) {
+      if (isJson) {
+        return NextResponse.json(
+          { error: "Spreadsheet file too large (max 8 MB)" },
+          { status: 400 },
+        );
+      }
+      return redirectAfterForm(request, returnTo, {
+        error: "Spreadsheet file too large (max 8 MB)",
+      });
+    }
+
+    const fileName =
+      "name" in uploadBlob && typeof (uploadBlob as File).name === "string"
+        ? (uploadBlob as File).name
+        : "spreadsheet.xlsx";
+    const buffer = Buffer.from(await uploadBlob.arrayBuffer());
     const jobId = startExcelMapJob({
       shopId: shop.id,
       buffer,
-      fileName: file.name,
+      fileName,
       pack,
       systemPrompt: systemPromptOverride || undefined,
     });
 
-    const finished = await waitForExcelMapJob(jobId, shop.id, 180_000);
+    if (isJson) {
+      const quickResult = await waitForExcelMapJob(jobId, shop.id, 3_000);
+      return NextResponse.json({
+        ok: true,
+        jobId,
+        job: quickResult,
+      });
+    }
+
+    const finished = await waitForExcelMapJob(jobId, shop.id, 4_000);
+
     const flash: Record<string, string> = {};
     if (finished?.status === "error") {
       flash.error = finished.error ?? "Excel preview failed";
@@ -93,27 +144,38 @@ export async function POST(request: Request, context: RouteContext) {
 
     return redirectAfterForm(request, returnToWithJob(returnTo, jobId), flash);
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Excel transform failed";
+
+    if (isJson) {
+      const status = isShopApiAccessError(error) ? 401 : 400;
+      return NextResponse.json({ error: message }, { status });
+    }
+
     if (isShopApiAccessError(error)) {
-      return redirectAfterForm(request, returnTo, { error: error.message });
+      return redirectAfterForm(request, returnTo, { error: message });
     }
     if (error instanceof AiImportConfigError) {
-      return redirectAfterForm(request, returnTo, { error: error.message });
+      return redirectAfterForm(request, returnTo, { error: message });
     }
     if (error instanceof AiImportMapError) {
-      return redirectAfterForm(request, returnTo, { error: error.message });
+      return redirectAfterForm(request, returnTo, { error: message });
     }
     if (error instanceof Error && error.message.includes("Excel")) {
-      return redirectAfterForm(request, returnTo, { error: error.message });
+      return redirectAfterForm(request, returnTo, { error: message });
     }
     if (error instanceof Error) {
-      return redirectAfterForm(request, returnTo, { error: error.message });
+      return redirectAfterForm(request, returnTo, { error: message });
     }
     throw error;
   }
 }
 
-export async function GET(): Promise<NextResponse> {
-  return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
+export async function GET(request: Request): Promise<NextResponse> {
+  const url = new URL(request.url);
+  url.pathname = "/merchant/import";
+  url.searchParams.set("tab", "ai");
+  return NextResponse.redirect(url);
 }
 
 export async function HEAD(): Promise<NextResponse> {

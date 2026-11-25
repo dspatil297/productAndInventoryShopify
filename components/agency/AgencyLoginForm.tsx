@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { loginAction, type LoginFormState } from "@/app/agency/login/actions";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export const AgencyLoginForm = () => {
   const [state, formAction, isPending] = useActionState<
@@ -34,13 +35,11 @@ export const AgencyLoginForm = () => {
         <label htmlFor="password" className="text-sm font-medium">
           Password
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
-          className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         />
       </div>
       <Button type="submit" className="w-full" disabled={isPending}>

@@ -11,6 +11,7 @@ export async function shopifyGraphql<T>(
   accessToken: string,
   query: string,
   variables?: Record<string, unknown>,
+  timeoutMs = 8_000,
 ): Promise<T> {
   const apiVersion = process.env.SHOPIFY_API_VERSION ?? "2026-07";
   const response = await fetch(
@@ -21,6 +22,7 @@ export async function shopifyGraphql<T>(
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": accessToken,
       },
+      signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({ query, variables }),
     },
   );

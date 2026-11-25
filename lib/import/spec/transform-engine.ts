@@ -282,20 +282,59 @@ export function buildProductDrafts(
               policy,
             );
           }
-          if (
-            (shopifyType === "json" || shopifyType.startsWith("list.")) &&
-            typeof transformed === "string" &&
-            transformed &&
-            !transformed.startsWith("[") &&
-            !transformed.startsWith("{")
-          ) {
-            errors.push(
-              `TYPE_MISMATCH: ${columnMapping.namespace}.${columnMapping.key}`,
-            );
+
+          if (shopifyType.startsWith("list.") && typeof transformed === "string" && transformed.trim()) {
+            if (transformed.startsWith("[") && transformed.endsWith("]")) {
+              try {
+                transformed = JSON.parse(transformed);
+              } catch {
+                transformed = [transformed];
+              }
+            } else {
+              transformed = [transformed];
+            }
+          }
+
+          const existingIndex = metafields.findIndex(
+            (m) => m.namespace === columnMapping.namespace && m.key === columnMapping.key,
+          );
+
+          if (existingIndex !== -1) {
+            const existing = metafields[existingIndex];
+            if (shopifyType.startsWith("list.") || columnMapping.merge_strategy === "merge_kv") {
+              let existingList: string[] = [];
+              try {
+                existingList = JSON.parse(String(existing.value));
+                if (!Array.isArray(existingList)) existingList = [String(existing.value)];
+              } catch {
+                existingList = [String(existing.value)];
+              }
+
+              const newItems = Array.isArray(transformed)
+                ? (transformed as string[])
+                : [String(transformed)];
+
+              const kvMap = new Map<string, string>();
+              for (const item of [...existingList, ...newItems]) {
+                const trimmed = String(item).trim();
+                if (!trimmed) continue;
+                if (trimmed.startsWith("K: ") && trimmed.includes(" V: ")) {
+                  const parts = trimmed.slice(3).split(" V: ");
+                  kvMap.set(parts[0].trim().toLowerCase(), trimmed);
+                } else {
+                  kvMap.set(trimmed.toLowerCase(), trimmed);
+                }
+              }
+              const mergedList = Array.from(kvMap.values());
+              existing.value = JSON.stringify(mergedList);
+            } else {
+              existing.value = serializeMetafieldValue(shopifyType, transformed);
+            }
             break;
           }
+
           const serialized = serializeMetafieldValue(shopifyType, transformed);
-          if (!serialized) {
+          if (!serialized || serialized === "[]" || serialized === "{}") {
             break;
           }
           metafields.push({
