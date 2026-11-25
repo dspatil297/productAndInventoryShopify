@@ -63,11 +63,17 @@ export function MetafieldSpreadsheet({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Metafields</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{shopName}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h1 className="font-display text-3xl tracking-tight text-foreground">
+              Metafields
+            </h1>
+            <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+              {shopName}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
             {definitions.length} definitions · {editableDefinitionCount} editable
             {definitions.length - editableDefinitionCount > 0
               ? ` · ${definitions.length - editableDefinitionCount} read-only`

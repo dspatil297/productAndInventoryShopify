@@ -27,12 +27,14 @@ export default async function MerchantPortalLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background md:flex-row">
       <MerchantDashboardNav
         shopName={shop.shopName}
         showSwitchStore={showSwitchStore}
       />
-      <main className="flex-1 overflow-auto p-6">{children}</main>
+      <main className="flex-1 overflow-x-hidden px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+        <div className="mx-auto w-full max-w-[1440px]">{children}</div>
+      </main>
     </div>
   );
 }
