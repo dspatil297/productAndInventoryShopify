@@ -1,8 +1,12 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const appUrl = process.env.SHOPIFY_APP_URL;
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: path.resolve("."),
+  },
   serverExternalPackages: ["bcrypt"],
   // Product create posts multipart images; default 10MB truncates → FormData fail / hang.
   experimental: {
