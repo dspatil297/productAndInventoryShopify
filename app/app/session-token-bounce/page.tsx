@@ -10,24 +10,40 @@ async function resolveBounceToken(
     return idTokenFromUrl;
   }
 
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    const shopify = window.shopify;
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    const shopify = (
+      window as unknown as {
+        shopify?: { idToken?: () => Promise<string> | string };
+      }
+    ).shopify;
     if (shopify?.idToken) {
       try {
         const idToken = shopify.idToken;
-        return typeof idToken === "function" ? await idToken() : await idToken;
+        const resolved =
+          typeof idToken === "function" ? await idToken() : await idToken;
+        if (resolved && typeof resolved === "string" && resolved.length > 0) {
+          return resolved;
+        }
       } catch {
-        break;
+        // App Bridge might still be handshaking, wait and retry
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
   return null;
 }
 
-function navigateToMerchantPortal(enterUrl: string): void {
+function navigateToMerchantPortal(
+  enterUrl: string,
+  isEmbeddedApp: boolean,
+): void {
+  if (isEmbeddedApp) {
+    window.location.replace(enterUrl);
+    return;
+  }
+
   const topWindow = window.top;
   if (topWindow && topWindow !== window.self) {
     topWindow.location.href = enterUrl;
@@ -85,7 +101,8 @@ function SessionTokenBounceInner() {
         target.searchParams.set("host", host);
       }
 
-      navigateToMerchantPortal(target.toString());
+      const isEmbedded = reload.startsWith("/app");
+      navigateToMerchantPortal(target.toString(), isEmbedded);
     }
 
     void bounce();
@@ -94,12 +111,24 @@ function SessionTokenBounceInner() {
   if (error) {
     return (
       <div className="space-y-3 p-8 text-sm">
-        <p className="text-destructive">{error}</p>
-        <p>
-          <a className="underline" href="/login">
+        <p className="text-destructive font-medium">{error}</p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+          >
+            Retry
+          </button>
+          <a
+            className="text-xs text-muted-foreground underline hover:text-foreground"
+            href="/login"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Go to merchant login
           </a>
-        </p>
+        </div>
       </div>
     );
   }
