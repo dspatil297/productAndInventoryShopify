@@ -364,6 +364,9 @@ export function AiImportSection({
       );
 
       const payload = await response.json().catch(() => ({}));
+      if (payload && typeof payload === "object" && "id" in payload) {
+        setJob(payload as ExcelMapJobPublic);
+      }
       if (!response.ok || payload?.error) {
         throw new Error(payload?.error || "Import failed");
       }

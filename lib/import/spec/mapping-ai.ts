@@ -381,6 +381,24 @@ export async function suggestMappingConfigWithAi(input: {
         raw.column_map = { ...raw };
       }
     }
+
+    if (
+      raw.column_map &&
+      typeof raw.column_map === "object" &&
+      !Array.isArray(raw.column_map)
+    ) {
+      const cleaned: Record<string, unknown> = {};
+      for (const [col, val] of Object.entries(
+        raw.column_map as Record<string, unknown>,
+      )) {
+        if (val && typeof val === "object" && !Array.isArray(val)) {
+          cleaned[col] = val;
+        } else if (typeof val === "string" && val.trim()) {
+          cleaned[col] = { target: val.trim(), transform: "identity" };
+        }
+      }
+      raw.column_map = cleaned;
+    }
   }
 
   const validated = mappingConfigSchema.safeParse(parsed);

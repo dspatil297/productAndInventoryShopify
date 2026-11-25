@@ -293,9 +293,15 @@ export async function confirmExcelMapImport(
     const imported = report.summary.created + report.summary.updated;
 
     if (report.summary.failed > 0) {
+      const failedEntry = report.handles.find(
+        (entry) => entry.status === "failed",
+      );
+      const failureDetail = failedEntry?.errors?.length
+        ? `: ${failedEntry.errors.join("; ")}`
+        : "";
       job.flash = {
         saved: String(imported),
-        error: `${report.summary.failed} row(s) failed at ${report.resume_from_handle ?? "unknown"}`,
+        error: `${report.summary.failed} row(s) failed at ${report.resume_from_handle ?? "unknown"}${failureDetail}`,
       };
       job.status = imported > 0 ? "done" : "error";
       if (job.status === "error") {
