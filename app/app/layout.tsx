@@ -8,9 +8,11 @@ export const metadata: Metadata = {
   description: "Merchant app home",
   other: {
     "shopify-api-key":
+      process.env.NEXT_PUBLIC_SHOPIFY_API_KEY ||
       process.env.SHOPIFY_API_KEY ||
       process.env.NEXT_PUBLIC_SHOPIFY_API_KEY ||
       "",
+      "a48902c859417cfa3b5aba419b49eb15",
   },
 };
 

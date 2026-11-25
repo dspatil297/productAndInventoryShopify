@@ -6,11 +6,15 @@ import { useSearchParams } from "next/navigation";
 async function resolveBounceToken(
   idTokenFromUrl: string | null,
 ): Promise<string | null> {
+): Promise<{ token: string | null; diagnostic?: string }> {
   if (idTokenFromUrl) {
     return idTokenFromUrl;
+    return { token: idTokenFromUrl };
   }
 
   for (let attempt = 0; attempt < 25; attempt += 1) {
+  let lastErr = "";
+  for (let attempt = 0; attempt < 30; attempt += 1) {
     const shopify = (
       window as unknown as {
         shopify?: { idToken?: () => Promise<string> | string };
@@ -23,9 +27,12 @@ async function resolveBounceToken(
           typeof idToken === "function" ? await idToken() : await idToken;
         if (resolved && typeof resolved === "string" && resolved.length > 0) {
           return resolved;
+          return { token: resolved };
         }
       } catch {
         // App Bridge might still be handshaking, wait and retry
+      } catch (err) {
+        lastErr = err instanceof Error ? err.message : String(err);
       }
     }
 
@@ -33,6 +40,16 @@ async function resolveBounceToken(
   }
 
   return null;
+  const hasShopify =
+    typeof (window as unknown as { shopify?: unknown }).shopify !== "undefined";
+  const metaApiKey = document
+    .querySelector('meta[name="shopify-api-key"]')
+    ?.getAttribute("content");
+
+  return {
+    token: null,
+    diagnostic: `AppBridge: ${hasShopify ? "loaded" : "not loaded"}, apiKey: ${metaApiKey ? metaApiKey.slice(0, 6) + "..." : "missing"}${lastErr ? `, err: ${lastErr}` : ""}`,
+  };
 }
 
 function navigateToMerchantPortal(
@@ -82,6 +99,14 @@ function SessionTokenBounceInner() {
       let token = searchParams.get("id_token");
       if (!token) {
         token = await resolveBounceToken(null);
+        const result = await resolveBounceToken(null);
+        token = result.token;
+        if (!token) {
+          setError(
+            `Could not get session token (${result.diagnostic ?? "timeout"}). Reopen the app from Shopify Admin.`,
+          );
+          return;
+        }
       }
 
       if (!token) {

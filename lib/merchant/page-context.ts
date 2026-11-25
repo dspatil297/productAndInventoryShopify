@@ -24,6 +24,13 @@ export async function requireMerchantShopFromPage(
       throw error;
     }
 
+    if (error.code === "shop_not_found") {
+      const shopDomain = urlParams.get("shop");
+      if (shopDomain) {
+        redirect(`/api/auth?shop=${encodeURIComponent(shopDomain)}`);
+      }
+    }
+
     if (
       isDocumentRequest(request) &&
       (error.code === "missing_token" || error.code === "invalid_token")
