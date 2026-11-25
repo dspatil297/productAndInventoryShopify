@@ -15,6 +15,19 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "25mb",
     },
   },
+  async headers() {
+    return [
+      {
+        source: "/app/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors https://*.myshopify.com https://admin.shopify.com;",
+          },
+        ],
+      },
+    ];
+  },
   allowedDevOrigins:
     process.env.NODE_ENV === "development"
       ? [

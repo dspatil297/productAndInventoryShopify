@@ -27,7 +27,7 @@ export async function requireMerchantShopFromPage(
     if (error.code === "shop_not_found") {
       const shopDomain = urlParams.get("shop");
       if (shopDomain) {
-        redirect(`/api/auth?shop=${encodeURIComponent(shopDomain)}`);
+        redirect(`/app/install?shop=${encodeURIComponent(shopDomain)}`);
       }
     }
 
