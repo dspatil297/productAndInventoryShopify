@@ -27,6 +27,7 @@
     "@shopify/polaris": "^13.9.5",
     "@shopify/shopify-api": "^13.1.0",
     "@tanstack/react-table": "^8.21.3",
+    "@vercel/speed-insights": "^2.1.0",
     "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
