@@ -29,11 +29,23 @@ interface InventoryGraphqlResponse {
         title: string;
         sku: string | null;
         displayName: string;
+        image: {
+          url: string;
+          altText: string | null;
+        } | null;
         product: {
           id: string;
           title: string;
           handle: string;
           productType: string | null;
+          featuredMedia: {
+            preview: {
+              image: {
+                url: string;
+                altText: string | null;
+              } | null;
+            } | null;
+          } | null;
         };
         inventoryItem: {
           id: string;
@@ -158,6 +170,14 @@ function mapEdgeToRow(
   edge: InventoryGraphqlResponse["productVariants"]["edges"][number],
 ): InventoryRow {
   const node = edge.node;
+  const variantImage = node.image;
+  const productImage = node.product.featuredMedia?.preview?.image ?? null;
+  const imageUrl = variantImage?.url ?? productImage?.url ?? null;
+  const imageAlt =
+    variantImage?.altText?.trim() ||
+    productImage?.altText?.trim() ||
+    node.product.title;
+
   return {
     variantId: node.id,
     variantTitle: node.title,
@@ -169,6 +189,8 @@ function mapEdgeToRow(
     productType: node.product.productType?.trim() || "",
     inventoryItemId: node.inventoryItem.id,
     tracked: node.inventoryItem.tracked,
+    imageUrl,
+    imageAlt,
     quantities: readQuantityMap(node.inventoryItem.inventoryLevel?.quantities),
   };
 }

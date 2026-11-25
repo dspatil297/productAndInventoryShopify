@@ -26,6 +26,8 @@ export interface InventoryRow {
   productType: string;
   inventoryItemId: string;
   tracked: boolean;
+  imageUrl: string | null;
+  imageAlt: string;
   quantities: InventoryQuantityMap;
 }
 

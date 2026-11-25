@@ -227,11 +227,23 @@ export const INVENTORY_AT_LOCATION_QUERY = `
           title
           sku
           displayName
+          image {
+            url
+            altText
+          }
           product {
             id
             title
             handle
             productType
+            featuredMedia {
+              preview {
+                image {
+                  url
+                  altText
+                }
+              }
+            }
           }
           inventoryItem {
             id
