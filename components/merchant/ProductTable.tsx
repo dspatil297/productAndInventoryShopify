@@ -6,6 +6,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from "@tanstack/react-table";
+import { Package } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
@@ -37,6 +38,25 @@ const BULK_DELETE_FORM_ID = "products-bulk-delete-form";
 
 function buildColumns(allowEdit: boolean): ColumnDef<ProductListItem>[] {
   return [
+    {
+      id: "image",
+      header: "Image",
+      cell: ({ row }) =>
+        row.original.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={row.original.imageUrl}
+            alt={row.original.imageAlt}
+            loading="lazy"
+            decoding="async"
+            className="h-12 w-12 rounded-lg border border-border bg-muted/40 object-cover"
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground/60">
+            <Package className="h-5 w-5" />
+          </div>
+        ),
+    },
     {
       accessorKey: "title",
       header: "Title",

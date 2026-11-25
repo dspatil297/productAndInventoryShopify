@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { appFormRedirect } from "@/lib/agency/app-url";
 import {
   appendMetafieldFlashParams,
@@ -24,6 +25,26 @@ function redirectAfterForm(
 
 export async function POST(request: Request, context: RouteContext) {
   const { shopId } = await context.params;
+  const contentType = request.headers.get("content-type") ?? "";
+  const isFormSubmit =
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data");
+
+  if (!isFormSubmit) {
+    try {
+      const shop = await requireShopApiAccess(request, shopId);
+      const definitions = await refreshMetafieldDefinitionsForShop(shop);
+      return NextResponse.json({ definitions });
+    } catch (error) {
+      if (isShopApiAccessError(error)) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
+      const message =
+        error instanceof Error ? error.message : "Failed to refresh columns";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
+
   const formData = await request.formData();
   const fallback = `/agency/stores/${shopId}/metafields`;
   const returnTo = safeMetafieldReturnTo(formData.get("returnTo"), fallback);

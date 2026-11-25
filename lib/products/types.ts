@@ -10,6 +10,8 @@ export interface ProductListItem {
   handle: string;
   productType: string;
   status: string;
+  imageUrl: string | null;
+  imageAlt: string;
   variants: ProductVariantRow[];
   skus: string;
   priceRange: string;

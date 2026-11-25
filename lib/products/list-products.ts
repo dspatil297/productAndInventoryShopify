@@ -18,6 +18,14 @@ interface ProductsGraphqlResponse {
         handle: string;
         productType: string;
         status: string;
+        featuredMedia: {
+          preview: {
+            image: {
+              url: string;
+              altText: string | null;
+            } | null;
+          } | null;
+        } | null;
         variants: {
           nodes: Array<{
             id: string;
@@ -100,12 +108,16 @@ function toProductListItem(
     .filter((sku): sku is string => Boolean(sku))
     .join(", ");
 
+  const featuredImage = node.featuredMedia?.preview?.image ?? null;
+
   return {
     id: node.id,
     title: node.title,
     handle: node.handle,
     productType: node.productType || "—",
     status: node.status,
+    imageUrl: featuredImage?.url ?? null,
+    imageAlt: featuredImage?.altText?.trim() || node.title,
     variants,
     skus: skus || "—",
     priceRange: formatPriceRange(variants),

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AiImportSection } from "@/components/merchant/AiImportSection";
 import type { ExcelMapJobPublic } from "@/lib/import/excel-map-jobs";
@@ -54,10 +55,14 @@ export function ProductImportPanel({
   initialJob,
   flash,
 }: ProductImportPanelProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<ImportTab>(initialTab);
   const [isRefreshingCols, setIsRefreshingCols] = useState(false);
   const [packVersion, setPackVersion] = useState(initialPackVersion);
-  const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
+  const [refreshStatus, setRefreshStatus] = useState<{
+    text: string;
+    isError: boolean;
+  } | null>(null);
 
   void _promptPackBuiltAt;
   void setPackVersion;
@@ -69,7 +74,7 @@ export function ProductImportPanel({
   const handleRefreshColumns = async () => {
     if (isRefreshingCols) return;
     setIsRefreshingCols(true);
-    setRefreshMessage(null);
+    setRefreshStatus(null);
 
     try {
       const response = await fetch(`/api/shops/${shopId}/metafield-definitions/refresh`, {
@@ -80,10 +85,17 @@ export function ProductImportPanel({
       if (!response.ok || data.error) {
         throw new Error(data.error || "Failed to refresh columns");
       }
-      setRefreshMessage(`Import columns refreshed (${data.definitions?.length ?? definitions.length} definitions).`);
-      setTimeout(() => setRefreshMessage(null), 4000);
+      setRefreshStatus({
+        text: `Import columns refreshed (${data.definitions?.length ?? definitions.length} definitions).`,
+        isError: false,
+      });
+      router.refresh();
+      setTimeout(() => setRefreshStatus(null), 4000);
     } catch (err) {
-      setRefreshMessage(err instanceof Error ? err.message : "Failed to refresh columns");
+      setRefreshStatus({
+        text: err instanceof Error ? err.message : "Failed to refresh columns",
+        isError: true,
+      });
     } finally {
       setIsRefreshingCols(false);
     }
@@ -134,9 +146,15 @@ export function ProductImportPanel({
               </>
             )}
           </button>
-          {refreshMessage ? (
-            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-              {refreshMessage}
+          {refreshStatus ? (
+            <span
+              className={`text-xs font-medium ${
+                refreshStatus.isError
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-emerald-600 dark:text-emerald-400"
+              }`}
+            >
+              {refreshStatus.text}
             </span>
           ) : null}
         </div>

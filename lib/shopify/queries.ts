@@ -95,6 +95,14 @@ export const PRODUCTS_LIST_QUERY = `
           handle
           productType
           status
+          featuredMedia {
+            preview {
+              image {
+                url
+                altText
+              }
+            }
+          }
           variants(first: 10) {
             nodes {
               id
