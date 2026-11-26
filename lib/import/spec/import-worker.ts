@@ -1,5 +1,4 @@
 import type { Shop } from "@/generated/prisma/client";
-import { setShopMetafields } from "@/lib/metafields/set-metafields";
 import { DEFAULT_IMPORT_POLICY } from "@/lib/import/spec/import-policy";
 import { isFrozenDraftField } from "@/lib/import/spec/merge";
 import type { ImportReport, ProductDraft } from "@/lib/import/spec/types";
@@ -132,24 +131,6 @@ export async function runImportWorker(
         });
         report.resume_from_handle = draft.handle;
         break;
-      }
-
-      const mappedMetafields = mapDraftMetafields(draft);
-      const listJsonMetafields = mappedMetafields.filter(
-        (metafield) =>
-          metafield.type === "json" || metafield.type.startsWith("list."),
-      );
-      if (listJsonMetafields.length > 0) {
-        await setShopMetafields(
-          shop,
-          listJsonMetafields.map((metafield) => ({
-            ownerId: draft.productId!,
-            namespace: metafield.namespace,
-            key: metafield.key,
-            type: metafield.type,
-            value: metafield.value,
-          })),
-        );
       }
 
       report.summary.updated += 1;

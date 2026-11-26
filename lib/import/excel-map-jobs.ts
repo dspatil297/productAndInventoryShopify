@@ -336,10 +336,22 @@ export async function confirmExcelMapImport(
         error: job.error,
       });
     } else {
+      const handleWarnings = report.handles
+        .filter((entry) => entry.errors.length > 0)
+        .slice(0, 3)
+        .map((entry) => `${entry.handle}: ${entry.errors.join("; ")}`);
       job.flash = {
         saved: String(imported),
         mapped: String(job.rowCount ?? 0),
+        ...(handleWarnings.length > 0
+          ? {
+              error: `Imported ${imported} product(s), but some metafields failed: ${handleWarnings.join(" | ")}`,
+            }
+          : {}),
       };
+      if (handleWarnings.length > 0) {
+        job.error = job.flash.error;
+      }
       job.status = "done";
       await saveImportSession(job.shopId, {
         id: job.id,

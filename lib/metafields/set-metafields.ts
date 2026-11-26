@@ -75,20 +75,54 @@ export async function setShopMetafields(
       },
     );
 
-    for (const userError of data.metafieldsSet.userErrors) {
-      const field = userError.field?.join(".") ?? "metafields";
-      const matchedUpdate = batch.find((update) =>
-        field.includes(update.namespace) && field.includes(update.key),
-      );
+    if (data.metafieldsSet.userErrors.length === 0) {
+      saved += data.metafieldsSet.metafields?.length ?? 0;
+      continue;
+    }
 
+    // metafieldsSet is atomic per batch: if 1 fails, retry individually so valid ones still save
+    if (batch.length > 1) {
+      for (const single of batch) {
+        const singleData =
+          await shopifyGraphqlForShop<MetafieldsSetGraphqlResponse>(
+            shop,
+            METAFIELDS_SET_MUTATION,
+            {
+              metafields: [
+                {
+                  ownerId: single.ownerId,
+                  namespace: single.namespace,
+                  key: single.key,
+                  type: single.type,
+                  value: single.value,
+                },
+              ],
+            },
+          );
+        if (singleData.metafieldsSet.userErrors.length === 0) {
+          saved += singleData.metafieldsSet.metafields?.length ?? 0;
+        } else {
+          for (const userError of singleData.metafieldsSet.userErrors) {
+            errors.push({
+              ownerId: single.ownerId,
+              namespace: single.namespace,
+              key: single.key,
+              message: userError.message,
+            });
+          }
+        }
+      }
+      continue;
+    }
+
+    for (const userError of data.metafieldsSet.userErrors) {
       errors.push({
-        ownerId: matchedUpdate?.ownerId ?? batch[0]?.ownerId ?? "unknown",
-        namespace: matchedUpdate?.namespace ?? batch[0]?.namespace ?? "",
-        key: matchedUpdate?.key ?? batch[0]?.key ?? "",
+        ownerId: batch[0]?.ownerId ?? "unknown",
+        namespace: batch[0]?.namespace ?? "",
+        key: batch[0]?.key ?? "",
         message: userError.message,
       });
     }
-
     saved += data.metafieldsSet.metafields?.length ?? 0;
   }
 
