@@ -208,19 +208,35 @@ export function mapCsvToProductRows(
       if (BASE_HEADERS.includes(header as (typeof BASE_HEADERS)[number])) {
         continue;
       }
-      const definition = defByColumn.get(header);
-      if (!definition) {
-        // Unknown column — ignore (allows extra cols)
-        continue;
-      }
       const value = (cells[columnIndex] ?? "").trim();
       if (!value) {
         continue;
       }
+      const definition = defByColumn.get(header);
+      if (definition) {
+        metafields.push({
+          namespace: definition.namespace,
+          key: definition.key,
+          type: definition.type.name,
+          value,
+        });
+        continue;
+      }
+      const nsKeyMatch = /^([a-z0-9_-]+)\.([a-z0-9_-]+)$/.exec(header);
+      if (!nsKeyMatch) {
+        continue;
+      }
+      const inferredType = value.startsWith("{")
+        ? "json"
+        : value.startsWith("[")
+          ? "list.single_line_text_field"
+          : value.includes("\n")
+            ? "multi_line_text_field"
+            : "single_line_text_field";
       metafields.push({
-        namespace: definition.namespace,
-        key: definition.key,
-        type: definition.type.name,
+        namespace: nsKeyMatch[1],
+        key: nsKeyMatch[2],
+        type: inferredType,
         value,
       });
     }

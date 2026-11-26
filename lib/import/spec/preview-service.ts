@@ -162,6 +162,7 @@ export async function buildPreviewDiffs(
         ...workingDraft,
         action: "update",
         productId: baseline.id,
+        variantId: baseline.variantId,
       });
       continue;
     }

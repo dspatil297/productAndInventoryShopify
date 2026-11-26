@@ -1,5 +1,6 @@
 import type { Shop } from "@/generated/prisma/client";
 import { setShopInventoryQuantities } from "@/lib/inventory/set-quantities";
+import { setShopMetafields } from "@/lib/metafields/set-metafields";
 import type { MetafieldUpdateInput } from "@/lib/metafields/types";
 import {
   normalizeMetafieldValue,
@@ -113,14 +114,10 @@ export async function createShopProduct(
     }
     const validation = validateMetafieldValue(metafield.type, value);
     if (!validation.ok) {
-      return {
-        productId: null,
-        title: null,
-        handle: null,
-        errors: [
-          `${metafield.namespace}.${metafield.key} (type: ${metafield.type}): ${validation.message}`,
-        ],
-      };
+      errors.push(
+        `${metafield.namespace}.${metafield.key} (type: ${metafield.type}): ${validation.message}`,
+      );
+      continue;
     }
     metafields.push({
       namespace: metafield.namespace,
@@ -160,9 +157,6 @@ export async function createShopProduct(
   }
   if (input.templateSuffix !== undefined) {
     product.templateSuffix = input.templateSuffix?.trim() || null;
-  }
-  if (metafields.length > 0) {
-    product.metafields = metafields;
   }
 
   const media =
@@ -206,6 +200,22 @@ export async function createShopProduct(
       handle: null,
       errors: errors.length > 0 ? errors : ["Product create failed"],
     };
+  }
+
+  if (metafields.length > 0) {
+    const metafieldResult = await setShopMetafields(
+      shop,
+      metafields.map((mf) => ({
+        ownerId: created.id,
+        namespace: mf.namespace,
+        key: mf.key,
+        type: mf.type,
+        value: mf.value,
+      })),
+    );
+    for (const mfError of metafieldResult.errors) {
+      errors.push(`${mfError.namespace}.${mfError.key}: ${mfError.message}`);
+    }
   }
 
   const price = input.price?.trim() ?? "";

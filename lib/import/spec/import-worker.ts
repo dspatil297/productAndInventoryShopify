@@ -112,6 +112,7 @@ export async function runImportWorker(
 
       const result = await updateShopProduct(shop, {
         productId: draft.productId,
+        variantId: draft.variantId,
         title: draft.title ?? draft.handle,
         handle: draft.handle,
         descriptionHtml: draft.body_html,

@@ -91,7 +91,17 @@ export async function runSpecImportPipeline(input: {
     mapping,
   );
 
-  const headers = productImportHeaders(definitions);
+  const baseHeaders = productImportHeaders(definitions);
+  const extraMetafieldHeaders = new Set<string>();
+  for (const draft of drafts) {
+    for (const metafield of draft.metafields) {
+      const key = `${metafield.namespace}.${metafield.key}`;
+      if (!baseHeaders.includes(key)) {
+        extraMetafieldHeaders.add(key);
+      }
+    }
+  }
+  const headers = [...baseHeaders, ...extraMetafieldHeaders];
   const csvRows = drafts.map((draft) => {
     const row: Record<string, string> = Object.fromEntries(
       headers.map((header) => [header, ""]),

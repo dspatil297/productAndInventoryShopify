@@ -6,6 +6,7 @@ const METAFIELD_FIRST = 50;
 
 export interface ProductBaseline {
   id: string;
+  variantId: string | null;
   handle: string;
   title: string;
   body_html: string;
@@ -83,6 +84,7 @@ export async function fetchProductBaselineByHandle(
 
     return {
       id: product.id,
+      variantId: variant?.id ?? null,
       handle: product.handle,
       title: product.title,
       body_html: product.descriptionHtml ?? "",

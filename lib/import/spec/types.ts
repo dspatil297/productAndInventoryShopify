@@ -119,6 +119,7 @@ export interface ProductDraft {
   handle: string;
   action: "create" | "update" | "skip";
   productId?: string;
+  variantId?: string | null;
   title?: string;
   body_html?: string;
   template_suffix?: string;

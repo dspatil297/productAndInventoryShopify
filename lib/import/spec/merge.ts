@@ -1,8 +1,26 @@
 import { cleanSpreadsheetText } from "@/lib/import/deterministic-row-clean";
 
+function extractKvLines(text: string): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return [];
+  }
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => cleanSpreadsheetText(String(item ?? ""))).filter(Boolean);
+      }
+    } catch {
+      // fall through to line split
+    }
+  }
+  return cleanSpreadsheetText(trimmed).split("\n");
+}
+
 export function parseKvMetafield(text: string): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const line of cleanSpreadsheetText(text).split("\n")) {
+  for (const line of extractKvLines(text)) {
     const trimmed = line.trim();
     if (!trimmed.startsWith("K: ") || !trimmed.includes(" V: ")) {
       continue;
@@ -41,6 +59,13 @@ export function mergeKv(oldValue: string, newValue: string): string {
     if (value.trim()) {
       merged[key] = value;
     }
+  }
+  const isJsonList =
+    newValue.trim().startsWith("[") || oldValue.trim().startsWith("[");
+  if (isJsonList) {
+    return JSON.stringify(
+      Object.entries(merged).map(([key, value]) => `K: ${key} V: ${value}`),
+    );
   }
   return formatKvMetafield(merged);
 }

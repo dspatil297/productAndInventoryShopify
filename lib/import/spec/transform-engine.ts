@@ -380,7 +380,10 @@ export function buildProductDrafts(
               const mergedList = Array.from(kvMap.values());
               existing.value = JSON.stringify(mergedList);
             } else {
-              existing.value = serializeMetafieldValue(shopifyType, transformed);
+              const nextSerialized = serializeMetafieldValue(shopifyType, transformed);
+              if (nextSerialized && nextSerialized !== "[]" && nextSerialized !== "{}") {
+                existing.value = nextSerialized;
+              }
             }
             break;
           }

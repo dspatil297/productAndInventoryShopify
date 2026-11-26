@@ -339,6 +339,9 @@ function bindJewelleryProfile(
   bindColumn(table, column_map, ["artisan impact"], {
     ...metafieldMapping("custom", "product_impact_stats", "impact_stats"),
   });
+  bindColumn(table, column_map, ["artisan impact"], {
+    ...metafieldMapping("custom", "product_impact_note", "impact_note"),
+  }, extra_mappings);
   bindColumn(table, column_map, ["the curation story", "the maker", "curation story"], {
     ...metafieldMapping("custom", "product_maker_story", "story_maker_json"),
   });
@@ -350,6 +353,9 @@ function bindJewelleryProfile(
   }, extra_mappings);
   bindColumn(table, column_map, ["base material", "material"], {
     ...metafieldMapping("custom", "filter_material", "clean_text"),
+  }, extra_mappings);
+  bindColumn(table, column_map, ["craft tradition"], {
+    ...metafieldMapping("custom", "filter_tradition", "clean_text"),
   }, extra_mappings);
   bindColumn(table, column_map, ["occasion"], {
     ...metafieldMapping("custom", "filter_occasion", "comma_to_list"),
@@ -529,11 +535,16 @@ export function ensureCoreMappings(
     Object.entries(column_map).find(([, entry]) => entry.target === "title")?.[0] ??
     "";
 
+  const extra_mappings = (mapping.extra_mappings ?? []).filter(
+    (entry) => table.headers.includes(entry.source_column) && entry.target !== "ignore",
+  );
+
   const arthenicTemplate = detectArthenicTemplate(table.headers);
 
   return {
     ...mapping,
     column_map,
+    ...(extra_mappings.length > 0 ? { extra_mappings } : {}),
     template_map: {
       painting: "paintings",
       paintings: "paintings",
