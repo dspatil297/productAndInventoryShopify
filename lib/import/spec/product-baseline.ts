@@ -55,6 +55,108 @@ function formatMetafieldValue(
   return node.value ?? "";
 }
 
+const PRODUCTS_BATCH_BY_HANDLES_QUERY = `
+  query ProductsBatchByHandles($first: Int!, $query: String!, $metafieldFirst: Int!) {
+    products(first: $first, query: $query) {
+      nodes {
+        id
+        title
+        handle
+        descriptionHtml
+        templateSuffix
+        variants(first: 1) {
+          nodes {
+            id
+            sku
+            price
+            compareAtPrice
+          }
+        }
+        metafields(first: $metafieldFirst) {
+          nodes {
+            namespace
+            key
+            type
+            value
+            jsonValue
+          }
+        }
+      }
+    }
+  }
+`;
+
+interface ProductsBatchResponse {
+  products: {
+    nodes: Array<NonNullable<ProductByHandleResponse["productByIdentifier"]>>;
+  };
+}
+
+function mapProductNodeToBaseline(
+  product: NonNullable<ProductByHandleResponse["productByIdentifier"]>,
+): ProductBaseline {
+  const variant = product.variants.nodes[0];
+  const metafields: Record<string, string> = {};
+  for (const node of product.metafields.nodes) {
+    metafields[`${node.namespace}.${node.key}`] = formatMetafieldValue(node);
+  }
+
+  return {
+    id: product.id,
+    variantId: variant?.id ?? null,
+    handle: product.handle,
+    title: product.title,
+    body_html: product.descriptionHtml ?? "",
+    template_suffix: product.templateSuffix?.trim() ?? "",
+    price: variant?.price ?? "",
+    compare_at_price: variant?.compareAtPrice ?? "",
+    sku: variant?.sku ?? "",
+    metafields,
+  };
+}
+
+export async function fetchProductBaselinesBatch(
+  shop: Shop,
+  handles: string[],
+): Promise<Map<string, ProductBaseline | null>> {
+  const unique = [...new Set(handles.map((h) => h.trim()).filter(Boolean))];
+  const result = new Map<string, ProductBaseline | null>();
+  for (const h of unique) {
+    result.set(h, null);
+  }
+  if (unique.length === 0) {
+    return result;
+  }
+
+  for (let i = 0; i < unique.length; i += 25) {
+    const chunk = unique.slice(i, i + 25);
+    const query = chunk
+      .map((h) => `handle:'${h.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`)
+      .join(" OR ");
+    try {
+      const data = await shopifyGraphqlForShop<ProductsBatchResponse>(
+        shop,
+        PRODUCTS_BATCH_BY_HANDLES_QUERY,
+        {
+          first: chunk.length,
+          query,
+          metafieldFirst: METAFIELD_FIRST,
+        },
+      );
+      for (const node of data.products.nodes) {
+        result.set(node.handle, mapProductNodeToBaseline(node));
+      }
+    } catch (err) {
+      console.warn(
+        "[baseline] Batch lookup failed:",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
+
+  return result;
+}
+
 export async function fetchProductBaselineByHandle(
   shop: Shop,
   handle: string,

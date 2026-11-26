@@ -4,7 +4,7 @@ import { updateShopConfig } from "@/lib/db/shops";import { prisma } from "@/lib/
 import type { ImportReport, ProductDraft } from "@/lib/import/spec/types";
 
 const SESSIONS_KEY = "importSessions";
-const MAX_SESSIONS = 10;
+const MAX_SESSIONS = 4;
 
 export type StoredImportSessionStatus =
   | "processing"
@@ -73,9 +73,18 @@ export async function saveImportSession(
     (entry) => entry.id !== session.id,
   );
   sessions.unshift(session);
+  const trimmed = sessions.slice(0, MAX_SESSIONS).map((entry, idx) =>
+    idx < 2
+      ? entry
+      : {
+          ...entry,
+          drafts: undefined,
+          csv: undefined,
+        },
+  );
   await updateShopConfig(shopId, {
     settings: {
-      [SESSIONS_KEY]: sessions.slice(0, MAX_SESSIONS),
+      [SESSIONS_KEY]: trimmed,
     },
   });
 }

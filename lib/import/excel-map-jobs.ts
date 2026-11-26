@@ -151,10 +151,10 @@ async function processExcelMapPreview(jobId: string): Promise<void> {
   }
 
   job.status = "processing";
-  void persistJobSnapshot(job, "processing");
 
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       reject(new Error("Preview timed out — try a smaller file or try again"));
     }, PREVIEW_TIMEOUT_MS);
   });
@@ -165,6 +165,8 @@ async function processExcelMapPreview(jobId: string): Promise<void> {
     job.status = "error";
     job.error = error instanceof Error ? error.message : "Excel preview failed";
     await persistJobSnapshot(job, "failed", { error: job.error });
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 

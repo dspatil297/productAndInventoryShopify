@@ -1,7 +1,7 @@
 import type { Shop } from "@/generated/prisma/client";
 import { isFrozenDraftField, mergeKv, mergeText } from "@/lib/import/spec/merge";
 import {
-  fetchProductBaselineByHandle,
+  fetchProductBaselinesBatch,
   type ProductBaseline,
 } from "@/lib/import/spec/product-baseline";
 import type {
@@ -10,8 +10,6 @@ import type {
   PreviewRowDiff,
   ProductDraft,
 } from "@/lib/import/spec/types";
-
-const BASELINE_FETCH_CONCURRENCY = 5;
 
 function applyFrozenFieldsOnUpdate(
   draft: ProductDraft,
@@ -51,20 +49,7 @@ async function prefetchBaselines(
   shop: Shop,
   handles: string[],
 ): Promise<Map<string, ProductBaseline | null>> {
-  const uniqueHandles = [...new Set(handles)];
-  const baselines = new Map<string, ProductBaseline | null>();
-
-  for (let index = 0; index < uniqueHandles.length; index += BASELINE_FETCH_CONCURRENCY) {
-    const chunk = uniqueHandles.slice(index, index + BASELINE_FETCH_CONCURRENCY);
-    const results = await Promise.all(
-      chunk.map((handle) => fetchProductBaselineByHandle(shop, handle)),
-    );
-    chunk.forEach((handle, chunkIndex) => {
-      baselines.set(handle, results[chunkIndex]);
-    });
-  }
-
-  return baselines;
+  return fetchProductBaselinesBatch(shop, handles);
 }
 
 export async function buildPreviewDiffs(
