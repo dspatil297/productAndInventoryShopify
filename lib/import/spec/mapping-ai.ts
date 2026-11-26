@@ -387,12 +387,39 @@ export async function suggestMappingConfigWithAi(input: {
       typeof raw.column_map === "object" &&
       !Array.isArray(raw.column_map)
     ) {
+      const targetAliases: Record<string, string> = {
+        description: "body_html",
+        body: "body_html",
+        price: "variant.price",
+        compare_at_price: "variant.compare_at_price",
+        sku: "variant.sku",
+        template: "template_suffix",
+      };
+      const validTransforms = new Set<string>(transformIds);
       const cleaned: Record<string, unknown> = {};
       for (const [col, val] of Object.entries(
         raw.column_map as Record<string, unknown>,
       )) {
         if (val && typeof val === "object" && !Array.isArray(val)) {
-          cleaned[col] = val;
+          const entry = { ...(val as Record<string, unknown>) };
+          if (typeof entry.target === "string") {
+            const mapped = targetAliases[entry.target] ?? entry.target;
+            if (mapped.includes(".") && !mapped.startsWith("variant.")) {
+              const [ns, ...rest] = mapped.split(".");
+              entry.target = "metafield";
+              entry.namespace = entry.namespace ?? ns;
+              entry.key = entry.key ?? rest.join(".");
+            } else {
+              entry.target = mapped;
+            }
+          }
+          if (
+            typeof entry.transform !== "string" ||
+            !validTransforms.has(entry.transform)
+          ) {
+            entry.transform = "identity";
+          }
+          cleaned[col] = entry;
         } else if (typeof val === "string" && val.trim()) {
           cleaned[col] = { target: val.trim(), transform: "identity" };
         }

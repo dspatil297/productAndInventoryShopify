@@ -231,7 +231,7 @@ export async function confirmExcelMapImport(
   if (!job || job.shopId !== shopId) {
     const stored = await getImportSession(shopId, jobId);
     if (!stored) {
-      throw new Error("Preview session not found");
+      throw new Error("Preview session expired or not found — click Generate preview again");
     }
     job = {
       id: stored.id,
