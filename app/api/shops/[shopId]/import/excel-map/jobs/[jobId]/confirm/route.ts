@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { confirmExcelMapImport } from "@/lib/import/excel-map-jobs";
+import { startExcelMapConfirm } from "@/lib/import/excel-map-jobs";
 
 import {
 
@@ -37,7 +37,7 @@ export async function POST(request: Request, context: RouteContext) {
     } catch {
       // empty body ok
     }
-    const job = await confirmExcelMapImport(jobId, shopId, { resumeFromHandle });
+    const job = await startExcelMapConfirm(jobId, shopId, { resumeFromHandle });
     return NextResponse.json(job);
 
   } catch (error) {

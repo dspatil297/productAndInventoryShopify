@@ -346,6 +346,7 @@ export function AiImportSection({
   const handleConfirmImport = async (resume = false) => {
     if (!activeJobId || importing) return;
     setImporting(true);
+    setImportSuccess(false);
     setErrorMessage(null);
 
     try {
@@ -363,12 +364,36 @@ export function AiImportSection({
         },
       );
 
-      const payload = await response.json().catch(() => ({}));
+      let payload = (await response.json().catch(() => ({}))) as ExcelMapJobPublic & {
+        error?: string;
+      };
       if (payload && typeof payload === "object" && "id" in payload) {
-        setJob(payload as ExcelMapJobPublic);
+        setJob(payload);
       }
-      if (!response.ok || payload?.error) {
+      if (!response.ok) {
         throw new Error(payload?.error || "Import failed");
+      }
+
+      const deadline = Date.now() + 180_000;
+      while (payload.status === "importing" && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+        const pollResponse = await fetch(
+          `/api/shops/${shopId}/import/excel-map/jobs/${activeJobId}`,
+          { credentials: "include" },
+        );
+        if (!pollResponse.ok) {
+          throw new Error(`Failed to check import status (HTTP ${pollResponse.status})`);
+        }
+        payload = (await pollResponse.json()) as ExcelMapJobPublic & { error?: string };
+        setJob(payload);
+      }
+
+      if (payload.status === "importing") {
+        throw new Error("Import timed out waiting for completion");
+      }
+
+      if (payload?.error || payload?.flash?.error) {
+        throw new Error(payload.error || payload.flash?.error || "Import failed");
       }
 
       setImportSuccess(true);
@@ -713,6 +738,12 @@ export function AiImportSection({
             <p className="text-xs text-destructive">
               Fix rows with warnings before import.
             </p>
+          ) : null}
+          {errorMessage ? (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-xs font-medium text-destructive">
+              <span>⚠️</span>
+              <span>{errorMessage}</span>
+            </div>
           ) : null}
         </section>
       ) : null}

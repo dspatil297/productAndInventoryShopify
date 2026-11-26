@@ -67,7 +67,7 @@ export async function fetchProductBaselineByHandle(
         { handle, metafieldFirst: METAFIELD_FIRST },
       ),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Baseline lookup timeout")), 2500),
+        setTimeout(() => reject(new Error("Baseline lookup timeout")), 5_000),
       ),
     ]);
 

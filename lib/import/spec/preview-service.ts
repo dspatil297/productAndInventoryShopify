@@ -80,7 +80,7 @@ export async function buildPreviewDiffs(
   const baselineHandles = drafts
     .filter((draft) => draft.errors.length === 0)
     .map((draft) => draft.handle)
-    .slice(0, 25);
+    .slice(0, 50);
   const baselines = await prefetchBaselines(shop, baselineHandles);
 
   for (const draft of drafts) {

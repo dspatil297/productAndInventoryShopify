@@ -366,6 +366,7 @@ export async function confirmExcelMapImport(
         drafts: job.drafts,
         csv: job.csv,
         report,
+        error: job.error,
       });
     }
   } catch (error) {
@@ -448,6 +449,16 @@ function storedSessionToPublic(
     mappedColumnCount: stored.previewRows?.length,
     canResume: Boolean(stored.resumeFromHandle),
     resumeFromHandle: stored.resumeFromHandle,
+    flash:
+      status === "done"
+        ? {
+            saved: String(
+              (stored.report?.summary.created ?? 0) +
+                (stored.report?.summary.updated ?? 0),
+            ),
+            ...(stored.error ? { error: stored.error } : {}),
+          }
+        : undefined,
     downloadReady: Boolean(stored.csv) && status !== "error",
     importDone: status === "done",
   };
@@ -476,6 +487,36 @@ export async function waitForExcelMapJob(
   }
 
   return getExcelMapJob(jobId, shopId);
+}
+
+export async function startExcelMapConfirm(
+  jobId: string,
+  shopId: string,
+  options?: { resumeFromHandle?: string },
+): Promise<ExcelMapJobPublic> {
+  const existing = await getExcelMapJob(jobId, shopId);
+  if (!existing) {
+    throw new Error("Preview session expired or not found — click Generate preview again");
+  }
+  if (existing.status === "importing") {
+    return existing;
+  }
+
+  const runPromise = confirmExcelMapImport(jobId, shopId, options);
+  const settled = await Promise.race([
+    runPromise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 4_000)),
+  ]);
+  if (settled) {
+    return settled;
+  }
+
+  return (
+    (await getExcelMapJob(jobId, shopId)) ?? {
+      ...existing,
+      status: "importing",
+    }
+  );
 }
 
 export async function getExcelMapJob(

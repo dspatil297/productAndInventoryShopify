@@ -363,7 +363,11 @@ export async function suggestMappingConfigWithAi(input: {
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(content);
+    const cleanedJson = content
+      .trim()
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "");
+    parsed = JSON.parse(cleanedJson);
   } catch {
     throw new AiImportMapError("AI mapping returned invalid JSON");
   }
