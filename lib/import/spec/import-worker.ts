@@ -6,6 +6,35 @@ import type { ImportReport, ProductDraft } from "@/lib/import/spec/types";
 import { createShopProduct } from "@/lib/products/create-product";
 import { updateShopProduct } from "@/lib/products/update-product";
 
+function resolveKnownMetafieldType(type: string, value: string): string {
+  if (type && type !== "unknown") {
+    return type;
+  }
+  const trimmed = value.trim();
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    return "json";
+  }
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    return "list.single_line_text_field";
+  }
+  if (trimmed.includes("\n")) {
+    return "multi_line_text_field";
+  }
+  return "single_line_text_field";
+}
+
+function mapDraftMetafields(draft: ProductDraft) {
+  return draft.metafields.map((metafield) => {
+    const value = String(metafield.value);
+    return {
+      namespace: metafield.namespace,
+      key: metafield.key,
+      type: resolveKnownMetafieldType(metafield.type, value),
+      value,
+    };
+  });
+}
+
 export async function runImportWorker(
   shop: Shop,
   sessionId: string,
@@ -52,12 +81,7 @@ export async function runImportWorker(
         compareAtPrice: draft.variants[0]?.compare_at_price,
         sku: draft.variants[0]?.sku,
         publish: false,
-        metafields: draft.metafields.map((metafield) => ({
-          namespace: metafield.namespace,
-          key: metafield.key,
-          type: metafield.type,
-          value: String(metafield.value),
-        })),
+        metafields: mapDraftMetafields(draft),
       });
 
       if (!result.productId) {
@@ -96,12 +120,7 @@ export async function runImportWorker(
         price: variant?.price,
         compareAtPrice: variant?.compare_at_price,
         sku: variant?.sku,
-        metafields: draft.metafields.map((metafield) => ({
-          namespace: metafield.namespace,
-          key: metafield.key,
-          type: metafield.type,
-          value: String(metafield.value),
-        })),
+        metafields: mapDraftMetafields(draft),
       });
 
       if (!result.productId) {
@@ -115,7 +134,8 @@ export async function runImportWorker(
         break;
       }
 
-      const listJsonMetafields = draft.metafields.filter(
+      const mappedMetafields = mapDraftMetafields(draft);
+      const listJsonMetafields = mappedMetafields.filter(
         (metafield) =>
           metafield.type === "json" || metafield.type.startsWith("list."),
       );
@@ -127,7 +147,7 @@ export async function runImportWorker(
             namespace: metafield.namespace,
             key: metafield.key,
             type: metafield.type,
-            value: String(metafield.value),
+            value: metafield.value,
           })),
         );
       }

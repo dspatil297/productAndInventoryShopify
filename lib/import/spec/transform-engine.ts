@@ -183,15 +183,55 @@ function resolveTemplateSuffix(
   return "";
 }
 
+const JSON_TRANSFORMS = new Set<string>([
+  "story_maker_json",
+  "story_process_json",
+  "story_heritage_json",
+  "story_styling_json",
+  "impact_stats",
+  "faq_columns",
+]);
+
+const LIST_TRANSFORMS = new Set<string>([
+  "lines_to_list",
+  "comma_to_list",
+  "kv_lines",
+  "kv_column",
+  "dimensions_block",
+]);
+
 function fieldTypeForMetafield(
   schema: StoreSchema,
   namespace: string,
   key: string,
+  transform?: string,
+  transformed?: unknown,
 ): string {
   const field = schema.metafields.find(
     (entry) => entry.namespace === namespace && entry.key === key,
   );
-  return field?.shopify_type ?? "single_line_text_field";
+  if (field?.shopify_type && field.shopify_type !== "unknown") {
+    return field.shopify_type;
+  }
+  if (transform && JSON_TRANSFORMS.has(transform)) {
+    return "json";
+  }
+  if (transform && LIST_TRANSFORMS.has(transform)) {
+    return "list.single_line_text_field";
+  }
+  if (transform === "html_paragraphs") {
+    return "multi_line_text_field";
+  }
+  if (Array.isArray(transformed)) {
+    return "list.single_line_text_field";
+  }
+  if (transformed && typeof transformed === "object") {
+    return "json";
+  }
+  if (typeof transformed === "string" && transformed.includes("\n")) {
+    return "multi_line_text_field";
+  }
+  return "single_line_text_field";
 }
 
 export function buildProductDrafts(
@@ -270,6 +310,8 @@ export function buildProductDrafts(
             schema,
             columnMapping.namespace,
             columnMapping.key,
+            columnMapping.transform,
+            transformed,
           );
           if (
             shopifyType === "json" &&
