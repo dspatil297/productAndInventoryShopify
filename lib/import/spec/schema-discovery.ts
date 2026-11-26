@@ -93,18 +93,34 @@ function inferTransform(parseHint: ParseHint, valueKind: ValueKind): string {
   return "clean_text";
 }
 
+export interface ThemeMetafieldUsage {
+  theme_files: string[];
+  liquid_hints?: string[];
+}
+
 export function scanThemeLiquidForMetafields(
   liquidContents: Array<{ filename: string; content: string }>,
-): Map<string, { theme_files: string[] }> {
-  const found = new Map<string, { theme_files: string[] }>();
+): Map<string, ThemeMetafieldUsage> {
+  const found = new Map<string, ThemeMetafieldUsage>();
   for (const file of liquidContents) {
     for (const match of file.content.matchAll(METAFIELD_REGEX)) {
       const namespace = match[1];
       const key = match[2];
       const id = `${namespace}.${key}`;
-      const entry = found.get(id) ?? { theme_files: [] };
+      const entry = found.get(id) ?? { theme_files: [], liquid_hints: [] };
       if (!entry.theme_files.includes(file.filename)) {
         entry.theme_files.push(file.filename);
+      }
+      if (match.index !== undefined && (entry.liquid_hints?.length ?? 0) < 3) {
+        const start = Math.max(0, match.index - 30);
+        const end = Math.min(file.content.length, match.index + match[0].length + 110);
+        const snippet = file.content
+          .slice(start, end)
+          .replace(/\s+/g, " ")
+          .trim();
+        if (snippet && !entry.liquid_hints?.includes(snippet)) {
+          entry.liquid_hints = [...(entry.liquid_hints ?? []), snippet];
+        }
       }
       found.set(id, entry);
     }
@@ -116,9 +132,11 @@ export function buildStoreSchema(input: {
   shop: string;
   definitions: MetafieldDefinitionNode[];
   productTemplates?: string[];
-  themeMetafields?: Map<string, { theme_files: string[] }>;
+  themeMetafields?: Map<string, ThemeMetafieldUsage>;
+  sampleValues?: Map<string, string[]>;
 }): StoreSchema {
   const themeMetafields = input.themeMetafields ?? new Map();
+  const sampleValues = input.sampleValues ?? new Map();
   const metafields: StoreMetafieldSchema[] = [];
 
   for (const definition of input.definitions) {
@@ -141,6 +159,8 @@ export function buildStoreSchema(input: {
       in_theme: Boolean(themeInfo),
       theme_files: themeInfo?.theme_files ?? [],
       aliases: [],
+      liquid_hints: themeInfo?.liquid_hints,
+      sample_values: sampleValues.get(id),
     });
   }
 
@@ -160,6 +180,8 @@ export function buildStoreSchema(input: {
       in_theme: true,
       theme_files: themeInfo.theme_files,
       aliases: [],
+      liquid_hints: themeInfo.liquid_hints,
+      sample_values: sampleValues.get(id),
     });
   }
 

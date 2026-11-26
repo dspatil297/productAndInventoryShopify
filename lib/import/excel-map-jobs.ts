@@ -66,8 +66,8 @@ interface ExcelMapJobRecord {
 }
 
 const JOB_TTL_MS = 60 * 60 * 1000;
-const PREVIEW_STALE_MS = 120 * 1000;
-const PREVIEW_TIMEOUT_MS = 90 * 1000;
+const PREVIEW_STALE_MS = 60 * 1000;
+const PREVIEW_TIMEOUT_MS = 30 * 1000;
 
 // ponytail: in-memory buffer cache; session drafts persisted in ShopConfig
 const jobs = new Map<string, ExcelMapJobRecord>();
@@ -153,9 +153,8 @@ async function processExcelMapPreview(jobId: string): Promise<void> {
   job.status = "processing";
   void persistJobSnapshot(job, "processing");
 
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
+    setTimeout(() => {
       reject(new Error("Preview timed out — try a smaller file or try again"));
     }, PREVIEW_TIMEOUT_MS);
   });
@@ -166,8 +165,6 @@ async function processExcelMapPreview(jobId: string): Promise<void> {
     job.status = "error";
     job.error = error instanceof Error ? error.message : "Excel preview failed";
     await persistJobSnapshot(job, "failed", { error: job.error });
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 
@@ -180,13 +177,18 @@ async function runExcelMapPreviewWork(job: ExcelMapJobRecord): Promise<void> {
 
     const definitions = readMetafieldDefinitionsFromConfig(shop.config);
     let profile = readStoreProfile(shop.config?.settings);
-    if (!profile) {
+    const hasEnrichedSchema = Boolean(
+      profile?.schema.metafields.some(
+        (m) => (m.liquid_hints?.length ?? 0) > 0 || (m.sample_values?.length ?? 0) > 0,
+      ),
+    );
+    if (!profile || !hasEnrichedSchema) {
       profile = await upsertStoreProfileForShop({
         shopId: shop.id,
         shopDomain: shop.shopDomain,
         definitions,
         shop,
-        systemPrompt: job.systemPrompt,
+        systemPrompt: job.systemPrompt ?? profile?.system_prompt,
       });
     }
 
@@ -201,10 +203,6 @@ async function runExcelMapPreviewWork(job: ExcelMapJobRecord): Promise<void> {
       },
       systemPrompt: job.systemPrompt,
     });
-
-    if ((job.status as string) === "error") {
-      return;
-    }
 
     job.mappingNotes = pipeline.mappingNotes;
     job.csv = pipeline.csv;

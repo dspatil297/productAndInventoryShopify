@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ArrowLeftRight,
   Boxes,
@@ -31,12 +31,10 @@ export function MerchantDashboardNav({
   showSwitchStore = false,
 }: MerchantDashboardNavProps) {
   const pathname = usePathname();
-  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ target: string; from: string } | null>(
+    null,
+  );
   const initial = shopName.trim().charAt(0).toUpperCase() || "S";
-
-  useEffect(() => {
-    setPendingHref(null);
-  }, [pathname]);
 
   return (
     <aside className="flex w-full shrink-0 flex-col border-b border-border bg-sidebar md:sticky md:top-0 md:h-screen md:w-60 md:border-r md:border-b-0">
@@ -73,7 +71,10 @@ export function MerchantDashboardNav({
       >
         {MODULE_LINKS.map((item) => {
           const isActive = pathname.startsWith(item.href);
-          const isPending = pendingHref === item.href && !isActive;
+          const isPending =
+            pending?.target === item.href &&
+            pending.from === pathname &&
+            !isActive;
           const highlighted = isActive || isPending;
           const Icon = item.icon;
 
@@ -84,7 +85,7 @@ export function MerchantDashboardNav({
               prefetch={false}
               onClick={() => {
                 if (!isActive) {
-                  setPendingHref(item.href);
+                  setPending({ target: item.href, from: pathname });
                 }
               }}
               className={`group relative flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${

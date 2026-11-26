@@ -1,5 +1,9 @@
 import type { ExcelTable } from "@/lib/import/excel-parse";
-import type { ColumnMapping, MappingConfig } from "@/lib/import/spec/types";
+import type {
+  ColumnMapping,
+  ExtraColumnMapping,
+  MappingConfig,
+} from "@/lib/import/spec/types";
 
 const CORE_ALIASES: Record<string, string[]> = {
   title: [
@@ -125,9 +129,21 @@ function bindColumn(
   column_map: MappingConfig["column_map"],
   candidates: string[],
   mapping: ColumnMapping,
+  extra_mappings?: ExtraColumnMapping[],
 ): void {
   const column = findExcelColumn(table, candidates);
   if (!column) {
+    return;
+  }
+  const existing = column_map[column];
+  if (
+    extra_mappings &&
+    existing &&
+    (existing.target !== mapping.target ||
+      existing.namespace !== mapping.namespace ||
+      existing.key !== mapping.key)
+  ) {
+    extra_mappings.push({ source_column: column, ...mapping });
     return;
   }
   column_map[column] = mapping;
@@ -283,6 +299,7 @@ function bindEthnicProfile(
 function bindJewelleryProfile(
   table: ExcelTable,
   column_map: MappingConfig["column_map"],
+  extra_mappings: ExtraColumnMapping[],
 ): void {
   bindColumn(table, column_map, CORE_ALIASES.title, {
     target: "title",
@@ -330,13 +347,13 @@ function bindJewelleryProfile(
   });
   bindColumn(table, column_map, ["jewellery type", "jewelry type"], {
     ...metafieldMapping("custom", "filter_jewelry_type", "clean_text"),
-  });
+  }, extra_mappings);
   bindColumn(table, column_map, ["base material", "material"], {
     ...metafieldMapping("custom", "filter_material", "clean_text"),
-  });
+  }, extra_mappings);
   bindColumn(table, column_map, ["occasion"], {
     ...metafieldMapping("custom", "filter_occasion", "comma_to_list"),
-  });
+  }, extra_mappings);
 }
 
 export function applyArthenicColumnProfile(
@@ -349,6 +366,9 @@ export function applyArthenicColumnProfile(
   }
 
   const column_map: MappingConfig["column_map"] = { ...mapping.column_map };
+  const extra_mappings: ExtraColumnMapping[] = [
+    ...(mapping.extra_mappings ?? []),
+  ];
 
   if (template === "sculpture") {
     bindDecorProfile(table, column_map);
@@ -357,12 +377,13 @@ export function applyArthenicColumnProfile(
   } else if (template === "ethnic-wear") {
     bindEthnicProfile(table, column_map);
   } else if (template === "jewellery") {
-    bindJewelleryProfile(table, column_map);
+    bindJewelleryProfile(table, column_map, extra_mappings);
   }
 
   return {
     ...mapping,
     column_map,
+    ...(extra_mappings.length > 0 ? { extra_mappings } : {}),
     template_map: {
       ...mapping.template_map,
       decor: "sculpture",

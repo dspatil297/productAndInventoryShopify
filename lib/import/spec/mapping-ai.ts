@@ -51,8 +51,13 @@ const columnMappingSchema = z.object({
     .optional(),
 });
 
+const extraMappingSchema = columnMappingSchema.extend({
+  source_column: z.string(),
+});
+
 const mappingConfigSchema = z.object({
   column_map: z.record(z.string(), columnMappingSchema),
+  extra_mappings: z.array(extraMappingSchema).optional(),
   handle_strategy: z
     .object({
       primary: z.literal("slugify"),
@@ -303,15 +308,26 @@ export async function suggestMappingConfigWithAi(input: {
 }): Promise<MappingConfig> {
   const config = getAiImportConfig();
   const samples = sampleExcelRows(input.table, 3);
+  const schemaSummary = input.schema.metafields.map((field) => ({
+    namespace: field.namespace,
+    key: field.key,
+    name: field.name,
+    shopify_type: field.shopify_type,
+    parse_hint: field.parse_hint,
+    in_theme: field.in_theme,
+    ...(field.liquid_hints?.length ? { liquid_hints: field.liquid_hints } : {}),
+    ...(field.sample_values?.length ? { sample_values: field.sample_values } : {}),
+  }));
   const userContent = [
     `Excel headers: ${input.table.headers.join(", ")}`,
     `Sample rows: ${JSON.stringify(samples)}`,
-    `Store schema: ${JSON.stringify(input.schema.metafields)}`,
+    `Store schema (with frontend Liquid usage & existing product sample values): ${JSON.stringify(schemaSummary)}`,
     `Import policy: ${JSON.stringify(input.policy)}`,
     input.existing
       ? `Existing mapping: ${JSON.stringify(input.existing.column_map)}`
       : "",
-    "Return column_map keyed by exact Excel header names.",
+    "Map EVERY relevant Excel column to core fields or store metafields. Use liquid_hints and sample_values to choose the exact transform (kv_lines, kv_column, lines_to_list, comma_to_list, impact_stats, faq_columns, story_maker_json, story_process_json, story_heritage_json, story_styling_json, dimensions_block, html_paragraphs, clean_text). If one Excel column populates multiple metafields (e.g. a detail line AND a filter_* metafield), put the primary mapping in column_map and additional ones in extra_mappings with source_column.",
+    "Return JSON with column_map keyed by exact Excel header names.",
   ].join("\n");
 
   const response = await fetch(config.baseUrl, {
@@ -451,9 +467,16 @@ export async function suggestMappingConfigWithAi(input: {
     }
   }
 
+  const validExtraMappings = (validated.data.extra_mappings ?? []).filter((entry) =>
+    headerSet.has(entry.source_column),
+  );
+
   return {
     excel: { header_row: 1 },
     column_map: validated.data.column_map,
+    ...(validExtraMappings.length > 0
+      ? { extra_mappings: validExtraMappings }
+      : {}),
     handle_overrides: input.existing?.handle_overrides ?? {},
     template_map: {
       painting: "paintings",

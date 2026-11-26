@@ -50,6 +50,8 @@ export interface StoreMetafieldSchema {
   in_theme: boolean;
   theme_files: string[];
   aliases: string[];
+  liquid_hints?: string[];
+  sample_values?: string[];
 }
 
 export interface StoreSchema {
@@ -91,6 +93,10 @@ export interface ColumnMapping {
   merge_strategy?: "replace" | "merge_kv" | "merge_text" | "skip_if_empty";
 }
 
+export interface ExtraColumnMapping extends ColumnMapping {
+  source_column: string;
+}
+
 export interface MappingConfig {
   excel: {
     sheet_name?: string;
@@ -98,6 +104,7 @@ export interface MappingConfig {
     category_column?: string;
   };
   column_map: Record<string, ColumnMapping>;
+  extra_mappings?: ExtraColumnMapping[];
   handle_overrides: Record<string, string>;
   template_map: Record<string, string>;
   handle_strategy?: {

@@ -256,7 +256,17 @@ export function buildProductDrafts(
     let compareAt = "";
     let sku = "";
 
-    for (const [sourceColumn, columnMapping] of Object.entries(mapping.column_map)) {
+    const allMappings: Array<[string, MappingConfig["column_map"][string]]> = [
+      ...Object.entries(mapping.column_map),
+      ...(mapping.extra_mappings ?? []).map(
+        (extra): [string, MappingConfig["column_map"][string]] => [
+          extra.source_column,
+          extra,
+        ],
+      ),
+    ];
+
+    for (const [sourceColumn, columnMapping] of allMappings) {
       if (columnMapping.target === "ignore") {
         continue;
       }

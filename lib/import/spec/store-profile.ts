@@ -1,8 +1,11 @@
 import type { Prisma, Shop } from "@/generated/prisma/client";
 import { updateShopConfig } from "@/lib/db/shops";
 import { prisma } from "@/lib/db/prisma";import { DEFAULT_IMPORT_POLICY } from "@/lib/import/spec/import-policy";
-import { buildStoreSchema } from "@/lib/import/spec/schema-discovery";
-import { discoverThemeMetafields } from "@/lib/import/spec/theme-scan";
+import { buildStoreSchema, type ThemeMetafieldUsage } from "@/lib/import/spec/schema-discovery";
+import {
+  discoverThemeMetafields,
+  sampleStoreProductMetafields,
+} from "@/lib/import/spec/theme-scan";
 import type {
   ImportPolicy,
   MappingConfig,
@@ -52,13 +55,15 @@ export async function upsertStoreProfileForShop(input: {
   mappingConfig?: MappingConfig;
   shop?: Shop;
 }): Promise<StoreProfile> {
-  let themeMetafields: Map<string, { theme_files: string[] }> | undefined;
+  let themeMetafields: Map<string, ThemeMetafieldUsage> | undefined;
+  let sampleValues: Map<string, string[]> | undefined;
   if (input.shop) {
-    try {
-      themeMetafields = await discoverThemeMetafields(input.shop);
-    } catch {
-      themeMetafields = undefined;
-    }
+    const [themeRes, sampleRes] = await Promise.allSettled([
+      discoverThemeMetafields(input.shop),
+      sampleStoreProductMetafields(input.shop),
+    ]);
+    themeMetafields = themeRes.status === "fulfilled" ? themeRes.value : undefined;
+    sampleValues = sampleRes.status === "fulfilled" ? sampleRes.value : undefined;
   }
 
   const schema = buildStoreSchema({
@@ -66,6 +71,7 @@ export async function upsertStoreProfileForShop(input: {
     definitions: input.definitions,
     productTemplates: input.productTemplates,
     themeMetafields,
+    sampleValues,
   });
 
   const existing = await prisma.shopConfig.findUnique({
