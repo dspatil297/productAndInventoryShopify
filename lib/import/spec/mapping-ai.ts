@@ -75,7 +75,6 @@ function getAiImportConfig(): {
   model: string;
   baseUrl: string;
 } {
-  const isOpenRouter = Boolean(process.env.OPENROUTER_API_KEY?.trim());
   const apiKey =
     process.env.OPENROUTER_API_KEY?.trim() ||
     process.env.AI_IMPORT_API_KEY?.trim() ||
@@ -87,17 +86,28 @@ function getAiImportConfig(): {
     );
   }
 
-  const defaultBaseUrl = isOpenRouter
-    ? "https://openrouter.ai/api/v1/chat/completions"
-    : "https://api.openai.com/v1/chat/completions";
+  const configuredUrl = process.env.AI_IMPORT_BASE_URL?.trim();
+  const isOpenRouter =
+    Boolean(process.env.OPENROUTER_API_KEY?.trim()) ||
+    apiKey.startsWith("sk-or-") ||
+    Boolean(configuredUrl?.includes("openrouter.ai"));
 
-  const defaultModel = isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini";
+  const baseUrl =
+    configuredUrl ||
+    (isOpenRouter
+      ? "https://openrouter.ai/api/v1/chat/completions"
+      : "https://api.openai.com/v1/chat/completions");
 
-  return {
-    apiKey,
-    model: process.env.AI_IMPORT_MODEL?.trim() || defaultModel,
-    baseUrl: process.env.AI_IMPORT_BASE_URL?.trim() || defaultBaseUrl,
-  };
+  let model =
+    process.env.AI_IMPORT_MODEL?.trim() ||
+    (isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini");
+
+  // ponytail: OpenRouter requires provider/model; .env.example defaults to bare gpt-4o-mini
+  if (isOpenRouter && !model.includes("/") && /^(gpt-|o[134]-|chatgpt-)/.test(model)) {
+    model = `openai/${model}`;
+  }
+
+  return { apiKey, model, baseUrl };
 }
 
 function extractMessageContent(payload: unknown): string | null {
@@ -110,7 +120,40 @@ function extractMessageContent(payload: unknown): string | null {
   }
   const message = (choices[0] as { message?: { content?: unknown } }).message;
   const content = message?.content;
-  return typeof content === "string" ? content : null;
+  if (typeof content === "string") {
+    return content;
+  }
+  if (Array.isArray(content)) {
+    const text = content
+      .map((part) =>
+        part && typeof part === "object" && "text" in part
+          ? String((part as { text?: unknown }).text ?? "")
+          : "",
+      )
+      .join("")
+      .trim();
+    return text || null;
+  }
+  return null;
+}
+
+function parseAiJsonResponse(content: string): unknown {
+  const stripped = content
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  try {
+    return JSON.parse(stripped);
+  } catch {
+    const start = stripped.indexOf("{");
+    const end = stripped.lastIndexOf("}");
+    if (start !== -1 && end > start) {
+      return JSON.parse(stripped.slice(start, end + 1));
+    }
+    throw new AiImportMapError("AI mapping returned invalid JSON");
+  }
 }
 
 function storyTransformForKey(key: string): TransformId {
@@ -419,23 +462,43 @@ export async function suggestMappingConfigWithAi(input: {
     .filter(Boolean)
     .join("\n");
 
-  const response = await fetch(config.baseUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    signal: AbortSignal.timeout(AI_MAPPING_TIMEOUT_MS),
-    body: JSON.stringify({
+  const requestBody = (withJsonFormat: boolean) =>
+    JSON.stringify({
       model: config.model,
       temperature: 0,
       messages: [
         { role: "system", content: systemMessage },
         { role: "user", content: userContent },
       ],
-      response_format: { type: "json_object" },
-    }),
+      ...(withJsonFormat ? { response_format: { type: "json_object" } } : {}),
+    });
+
+  let response = await fetch(config.baseUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    signal: AbortSignal.timeout(AI_MAPPING_TIMEOUT_MS),
+    body: requestBody(true),
   });
+
+  if (response.status === 400) {
+    const errText = await response.text();
+    if (/response_format|json_object/i.test(errText)) {
+      response = await fetch(config.baseUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(AI_MAPPING_TIMEOUT_MS),
+        body: requestBody(false),
+      });
+    } else {
+      throw new AiImportMapError(`AI mapping failed (400): ${errText.slice(0, 200)}`);
+    }
+  }
 
   if (!response.ok) {
     const body = await response.text();
@@ -452,11 +515,7 @@ export async function suggestMappingConfigWithAi(input: {
 
   let parsed: unknown;
   try {
-    const cleanedJson = content
-      .trim()
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```$/i, "");
-    parsed = JSON.parse(cleanedJson);
+    parsed = parseAiJsonResponse(content);
   } catch {
     throw new AiImportMapError("AI mapping returned invalid JSON");
   }
