@@ -16,7 +16,7 @@ const MAIN_THEME_QUERY = `
 const THEME_FILES_QUERY = `
   query ThemeFiles($themeId: ID!, $filenames: [String!]!) {
     theme(id: $themeId) {
-      files(first: 100, filenames: $filenames) {
+      files(first: 25, filenames: $filenames) {
         nodes {
           filename
           body {
@@ -30,9 +30,9 @@ const THEME_FILES_QUERY = `
 
 const SAMPLE_PRODUCTS_METAFIELDS_QUERY = `
   query SampleProductMetafields {
-    products(first: 3, sortKey: UPDATED_AT, reverse: true) {
+    products(first: 2, sortKey: UPDATED_AT, reverse: true) {
       nodes {
-        metafields(first: 30) {
+        metafields(first: 25) {
           nodes {
             namespace
             key
@@ -48,9 +48,7 @@ const THEME_SCAN_PATTERNS = [
   "templates/product*.json",
   "sections/*product*.liquid",
   "snippets/*pdp*.liquid",
-  "snippets/*product*.liquid",
   "snippets/*accordion*.liquid",
-  "snippets/*metafield*.liquid",
 ];
 
 interface MainThemeResponse {

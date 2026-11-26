@@ -188,8 +188,6 @@ const JSON_TRANSFORMS = new Set<string>([
   "story_process_json",
   "story_heritage_json",
   "story_styling_json",
-  "impact_stats",
-  "faq_columns",
 ]);
 
 const LIST_TRANSFORMS = new Set<string>([
@@ -198,6 +196,8 @@ const LIST_TRANSFORMS = new Set<string>([
   "kv_lines",
   "kv_column",
   "dimensions_block",
+  "impact_stats",
+  "faq_columns",
 ]);
 
 function fieldTypeForMetafield(

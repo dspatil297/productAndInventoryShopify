@@ -17,7 +17,7 @@ export interface ProductBaseline {
 }
 
 interface ProductByHandleResponse {
-  productByHandle: {
+  productByIdentifier: {
     id: string;
     title: string;
     handle: string;
@@ -44,9 +44,9 @@ interface ProductByHandleResponse {
 }
 
 function formatMetafieldValue(
-  node: ProductByHandleResponse["productByHandle"] extends null
+  node: ProductByHandleResponse["productByIdentifier"] extends null
     ? never
-    : NonNullable<ProductByHandleResponse["productByHandle"]>["metafields"]["nodes"][number],
+    : NonNullable<ProductByHandleResponse["productByIdentifier"]>["metafields"]["nodes"][number],
 ): string {
   if (node.type === "json" && node.jsonValue !== null && node.jsonValue !== undefined) {
     return JSON.stringify(node.jsonValue);
@@ -70,7 +70,7 @@ export async function fetchProductBaselineByHandle(
       ),
     ]);
 
-    const product = data.productByHandle;
+    const product = data.productByIdentifier;
     if (!product) {
       return null;
     }

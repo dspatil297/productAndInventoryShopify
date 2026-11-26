@@ -177,10 +177,17 @@ async function runExcelMapPreviewWork(job: ExcelMapJobRecord): Promise<void> {
 
     const definitions = readMetafieldDefinitionsFromConfig(shop.config);
     let profile = readStoreProfile(shop.config?.settings);
+    const profileAgeMs = profile?.updated_at
+      ? Date.now() - Date.parse(profile.updated_at)
+      : Number.POSITIVE_INFINITY;
     const hasEnrichedSchema = Boolean(
-      profile?.schema.metafields.some(
-        (m) => (m.liquid_hints?.length ?? 0) > 0 || (m.sample_values?.length ?? 0) > 0,
-      ),
+      profile &&
+        profileAgeMs < 30 * 60 * 1000 &&
+        profile.schema.metafields.some(
+          (m) =>
+            (m.liquid_hints?.length ?? 0) > 0 ||
+            (m.sample_values?.length ?? 0) > 0,
+        ),
     );
     if (!profile || !hasEnrichedSchema) {
       profile = await upsertStoreProfileForShop({
