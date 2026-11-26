@@ -1,6 +1,6 @@
 import type { Shop } from "@/generated/prisma/client";
 import type { Prisma } from "@/generated/prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, withDbRetry } from "@/lib/db/prisma";
 import { decrypt, encrypt } from "@/lib/encryption";
 
 export interface UpsertShopInput {
@@ -52,15 +52,17 @@ export async function upsertShop(input: UpsertShopInput): Promise<Shop> {
 }
 
 export async function getShopByDomain(shopDomain: string): Promise<Shop | null> {
-  return prisma.shop.findUnique({ where: { shopDomain } });
+  return withDbRetry(() => prisma.shop.findUnique({ where: { shopDomain } }));
 }
 
 export async function getActiveShopByDomain(
   shopDomain: string,
 ): Promise<Shop | null> {
-  return prisma.shop.findFirst({
-    where: { shopDomain, isActive: true },
-  });
+  return withDbRetry(() =>
+    prisma.shop.findFirst({
+      where: { shopDomain, isActive: true },
+    }),
+  );
 }
 
 export function getShopAccessToken(shop: Shop): string {
@@ -82,17 +84,21 @@ export async function deleteShopSessions(shopDomain: string): Promise<void> {
 }
 
 export async function listShopsWithConfig() {
-  return prisma.shop.findMany({
-    include: { config: true },
-    orderBy: { installedAt: "desc" },
-  });
+  return withDbRetry(() =>
+    prisma.shop.findMany({
+      include: { config: true },
+      orderBy: { installedAt: "desc" },
+    }),
+  );
 }
 
 export async function getShopWithConfig(shopId: string) {
-  return prisma.shop.findUnique({
-    where: { id: shopId },
-    include: { config: true },
-  });
+  return withDbRetry(() =>
+    prisma.shop.findUnique({
+      where: { id: shopId },
+      include: { config: true },
+    }),
+  );
 }
 
 export async function disconnectShop(
@@ -120,34 +126,31 @@ export async function updateShopConfig(
   shopId: string,
   data: { lowStockThreshold?: number; settings?: Record<string, unknown> },
 ) {
-  const shop = await prisma.shop.findUnique({ where: { id: shopId } });
-  if (!shop) {
-    return null;
-  }
+  return withDbRetry(async () => {
+    const existing = await prisma.shopConfig.findUnique({
+      where: { shopId },
+    });
+    if (!existing) {
+      return null;
+    }
 
-  const existing = await prisma.shopConfig.findUnique({
-    where: { shopId },
-  });
-  if (!existing) {
-    return null;
-  }
+    const currentSettings =
+      typeof existing.settings === "object" && existing.settings !== null
+        ? (existing.settings as Record<string, unknown>)
+        : {};
 
-  const currentSettings =
-    typeof existing.settings === "object" && existing.settings !== null
-      ? (existing.settings as Record<string, unknown>)
-      : {};
-
-  return prisma.shopConfig.update({
-    where: { shopId },
-    data: {
-      ...(data.lowStockThreshold !== undefined
-        ? { lowStockThreshold: data.lowStockThreshold }
-        : {}),
-      ...(data.settings
-        ? {
-            settings: { ...currentSettings, ...data.settings } as Prisma.InputJsonValue,
-          }
-        : {}),
-    },
+    return prisma.shopConfig.update({
+      where: { shopId },
+      data: {
+        ...(data.lowStockThreshold !== undefined
+          ? { lowStockThreshold: data.lowStockThreshold }
+          : {}),
+        ...(data.settings
+          ? {
+              settings: { ...currentSettings, ...data.settings } as Prisma.InputJsonValue,
+            }
+          : {}),
+      },
+    });
   });
 }

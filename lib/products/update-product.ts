@@ -76,7 +76,7 @@ export async function updateShopProduct(
   const product: Record<string, unknown> = {
     id: input.productId,
     title,
-    status: input.status ?? "ACTIVE",
+    ...(input.status ? { status: input.status } : {}),
   };
 
   if (input.handle?.trim()) {
@@ -123,7 +123,17 @@ export async function updateShopProduct(
   const sku = input.sku?.trim() ?? "";
   const inventoryPolicy = input.inventoryPolicy;
 
-  if (variantId) {
+  const hasVariantChanges = Boolean(
+    price ||
+      compareAtPrice ||
+      input.compareAtPrice !== undefined ||
+      sku ||
+      input.sku !== undefined ||
+      inventoryPolicy === "DENY" ||
+      inventoryPolicy === "CONTINUE",
+  );
+
+  if (variantId && hasVariantChanges) {
     const variantInput: Record<string, unknown> = { id: variantId };
     if (price) {
       variantInput.price = price;

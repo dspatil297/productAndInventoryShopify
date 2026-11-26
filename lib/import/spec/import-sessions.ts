@@ -1,6 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { prisma, withDbRetry } from "@/lib/db/prisma";
+import { updateShopConfig } from "@/lib/db/shops";
 import type { ExcelImportPreviewRow } from "@/lib/import/excel-pipeline";
-import { updateShopConfig } from "@/lib/db/shops";import { prisma } from "@/lib/db/prisma";
 import type { ImportReport, ProductDraft } from "@/lib/import/spec/types";
 
 const SESSIONS_KEY = "importSessions";
@@ -64,10 +65,12 @@ export async function saveImportSession(
   shopId: string,
   session: StoredImportSession,
 ): Promise<void> {
-  const existing = await prisma.shopConfig.findUnique({
-    where: { shopId },
-    select: { settings: true },
-  });
+  const existing = await withDbRetry(() =>
+    prisma.shopConfig.findUnique({
+      where: { shopId },
+      select: { settings: true },
+    }),
+  );
   const settings = readSettingsRecord(existing?.settings);
   const sessions = readImportSessions(settings as Prisma.JsonValue).filter(
     (entry) => entry.id !== session.id,
@@ -77,10 +80,10 @@ export async function saveImportSession(
     idx < 2
       ? entry
       : {
-          ...entry,
-          drafts: undefined,
-          csv: undefined,
-        },
+        ...entry,
+        drafts: undefined,
+        csv: undefined,
+      },
   );
   await updateShopConfig(shopId, {
     settings: {
@@ -93,10 +96,12 @@ export async function getImportSession(
   shopId: string,
   sessionId: string,
 ): Promise<StoredImportSession | null> {
-  const existing = await prisma.shopConfig.findUnique({
-    where: { shopId },
-    select: { settings: true },
-  });
+  const existing = await withDbRetry(() =>
+    prisma.shopConfig.findUnique({
+      where: { shopId },
+      select: { settings: true },
+    }),
+  );
   return (
     readImportSessions(existing?.settings).find(
       (session) => session.id === sessionId,

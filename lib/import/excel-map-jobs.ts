@@ -66,8 +66,8 @@ interface ExcelMapJobRecord {
 }
 
 const JOB_TTL_MS = 60 * 60 * 1000;
-const PREVIEW_STALE_MS = 60 * 1000;
-const PREVIEW_TIMEOUT_MS = 30 * 1000;
+const PREVIEW_STALE_MS = 90 * 1000;
+const PREVIEW_TIMEOUT_MS = 75 * 1000;
 
 // ponytail: in-memory buffer cache; session drafts persisted in ShopConfig
 const jobs = new Map<string, ExcelMapJobRecord>();
@@ -162,9 +162,16 @@ async function processExcelMapPreview(jobId: string): Promise<void> {
   try {
     await Promise.race([runExcelMapPreviewWork(job), timeout]);
   } catch (error) {
+    if ((job.status as ExcelMapJobStatus) === "preview_ready") {
+      return;
+    }
     job.status = "error";
     job.error = error instanceof Error ? error.message : "Excel preview failed";
-    await persistJobSnapshot(job, "failed", { error: job.error });
+    try {
+      await persistJobSnapshot(job, "failed", { error: job.error });
+    } catch {
+      // avoid unhandled rejection if DB write fails during timeout/error recovery
+    }
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
@@ -374,6 +381,11 @@ export async function confirmExcelMapImport(
   } catch (error) {
     job.status = "error";
     job.error = error instanceof Error ? error.message : "Import failed";
+    try {
+      await persistJobSnapshot(job, "failed", { error: job.error });
+    } catch {
+      // ignore snapshot failure
+    }
   }
 
   return toPublicJob(job);

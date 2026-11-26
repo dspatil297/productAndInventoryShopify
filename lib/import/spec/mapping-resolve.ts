@@ -24,7 +24,13 @@ const CORE_ALIASES: Record<string, string[]> = {
   ],
   "variant.price": ["price", "mrp", "list price", "sale price"],
   "variant.sku": ["sku", "sku code", "sku_code"],
-  template_suffix: ["template", "theme", "category", "page template"],
+  template_suffix: [
+    "template",
+    "theme",
+    "template suffix",
+    "product template",
+    "page template",
+  ],
 };
 
 const PACK_HEADER_TO_TARGET: Record<string, ColumnMapping["target"]> = {
@@ -60,8 +66,14 @@ export function findExcelColumn(
   }
   for (const header of table.headers) {
     const normalized = normalizeHeader(header);
+    if (normalized.length < 4) {
+      continue;
+    }
     for (const candidate of candidates) {
       const normCandidate = normalizeHeader(candidate);
+      if (normCandidate.length < 4) {
+        continue;
+      }
       if (
         normalized === normCandidate ||
         normalized.includes(normCandidate) ||
@@ -130,20 +142,35 @@ function bindColumn(
   candidates: string[],
   mapping: ColumnMapping,
   extra_mappings?: ExtraColumnMapping[],
+  exactOnly = false,
 ): void {
-  const column = findExcelColumn(table, candidates);
+  const column = exactOnly
+    ? (table.headers.find((h) =>
+        candidates.some((c) => normalizeHeader(h) === normalizeHeader(c)),
+      ) ?? null)
+    : findExcelColumn(table, candidates);
   if (!column) {
     return;
   }
   const existing = column_map[column];
   if (
-    extra_mappings &&
     existing &&
     (existing.target !== mapping.target ||
       existing.namespace !== mapping.namespace ||
       existing.key !== mapping.key)
   ) {
-    extra_mappings.push({ source_column: column, ...mapping });
+    if (extra_mappings) {
+      const alreadyExtra = extra_mappings.some(
+        (item) =>
+          item.source_column === column &&
+          item.target === mapping.target &&
+          item.namespace === mapping.namespace &&
+          item.key === mapping.key,
+      );
+      if (!alreadyExtra) {
+        extra_mappings.push({ source_column: column, ...mapping });
+      }
+    }
     return;
   }
   column_map[column] = mapping;
@@ -152,6 +179,7 @@ function bindColumn(
 function bindDecorProfile(
   table: ExcelTable,
   column_map: MappingConfig["column_map"],
+  extra_mappings: ExtraColumnMapping[],
 ): void {
   bindColumn(table, column_map, CORE_ALIASES.title, {
     target: "title",
@@ -179,44 +207,103 @@ function bindDecorProfile(
     [["indoor / outdoor", "indoor outdoor"], "Indoor / Outdoor"],
   ];
   for (const [candidates, label] of detailColumns) {
-    bindColumn(table, column_map, candidates, kvDetailMapping(label));
+    bindColumn(table, column_map, candidates, kvDetailMapping(label), extra_mappings);
   }
 
-  bindColumn(table, column_map, ["dimensions & scale", "dimensions"], {
-    ...metafieldMapping("custom", "product_measurements", "dimensions_block"),
-  });
+  bindColumn(
+    table,
+    column_map,
+    ["dimensions & scale", "dimensions"],
+    metafieldMapping("custom", "product_measurements", "dimensions_block", "merge_kv"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["dimensions & scale", "dimensions"],
+    metafieldMapping("custom", "product_measurement_highlight", "dimensions_block", "replace", {
+      part: "highlight",
+    }),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["dimensions & scale", "dimensions"],
+    metafieldMapping("custom", "product_measurement_note", "dimensions_block", "replace", {
+      part: "note",
+    }),
+    extra_mappings,
+  );
   bindColumn(table, column_map, ["whats included"], {
     ...metafieldMapping("custom", "product_whats_included", "lines_to_list"),
-  });
+  }, extra_mappings);
   bindColumn(table, column_map, ["artisan impact"], {
     ...metafieldMapping("custom", "product_impact_stats", "impact_stats"),
-  });
+  }, extra_mappings);
+  bindColumn(
+    table,
+    column_map,
+    ["artisan impact"],
+    metafieldMapping("custom", "product_impact_note", "impact_note"),
+    extra_mappings,
+  );
   bindColumn(table, column_map, ["care instructions"], {
     ...metafieldMapping("custom", "product_care_instructions", "lines_to_list"),
-  });
+  }, extra_mappings);
   bindColumn(table, column_map, ["the maker"], {
-    ...metafieldMapping("custom", "maker_story", "story_maker_json"),
-  });
+    ...metafieldMapping("custom", "product_maker_story", "story_maker_json"),
+  }, extra_mappings);
   bindColumn(table, column_map, ["how its made", "how it's made"], {
-    ...metafieldMapping("custom", "process_story", "story_process_json"),
-  });
+    ...metafieldMapping("custom", "product_process_story", "story_process_json"),
+  }, extra_mappings);
   bindColumn(table, column_map, ["artistry behind"], {
-    ...metafieldMapping("custom", "heritage_story", "story_heritage_json"),
-  });
+    ...metafieldMapping("custom", "product_heritage_story", "story_heritage_json"),
+  }, extra_mappings);
   bindColumn(
     table,
     column_map,
     ["application and styling"],
-    metafieldMapping("custom", "styling_story", "story_styling_json"),
+    metafieldMapping("custom", "pdp_styling_story", "story_styling_json"),
+    extra_mappings,
   );
   bindColumn(table, column_map, ["faqs", "faq"], {
     ...metafieldMapping("custom", "product_faq", "faq_columns"),
-  });
+  }, extra_mappings);
+  bindColumn(
+    table,
+    column_map,
+    ["material"],
+    metafieldMapping("custom", "filter_material", "clean_text"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["sculpture type"],
+    metafieldMapping("custom", "filter_product_type", "clean_text"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["craft tradition"],
+    metafieldMapping("custom", "filter_tradition", "clean_text"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["usage"],
+    metafieldMapping("custom", "filter_occasion", "comma_to_list"),
+    extra_mappings,
+  );
 }
 
 function bindPaintingsProfile(
   table: ExcelTable,
   column_map: MappingConfig["column_map"],
+  extra_mappings: ExtraColumnMapping[],
 ): void {
   bindColumn(table, column_map, ["painting title", "product title", "title"], {
     target: "title",
@@ -235,11 +322,154 @@ function bindPaintingsProfile(
     target: "body_html",
     transform: "html_paragraphs",
   });
+
+  const detailColumns: Array<[string[], string]> = [
+    [["tradition"], "Tradition"],
+    [["region"], "Region"],
+    [["medium"], "Medium"],
+    [["canvas preparation"], "Canvas preparation"],
+    [["pigments"], "Pigments"],
+    [["outline technique"], "Outline technique"],
+    [["style"], "Style"],
+    [["originality"], "Originality"],
+    [["year"], "Year"],
+    [["paintning details subject", "painting details subject", "subject"], "Subject"],
+    [["framing options"], "Framing"],
+  ];
+  for (const [candidates, label] of detailColumns) {
+    bindColumn(table, column_map, candidates, kvDetailMapping(label), extra_mappings, true);
+  }
+
+  bindColumn(
+    table,
+    column_map,
+    ["canvas size"],
+    metafieldMapping("custom", "product_measurements", "dimensions_block", "merge_kv"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["what s included", "whats included"],
+    metafieldMapping("custom", "product_whats_included", "lines_to_list"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["care display", "care & display", "care instructions"],
+    metafieldMapping("custom", "product_care_instructions", "lines_to_list"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["artisan impact"],
+    metafieldMapping("custom", "product_impact_stats", "impact_stats"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["artisan impact"],
+    metafieldMapping("custom", "product_impact_note", "impact_note"),
+    extra_mappings,
+  );
+  for (const faqCol of ["FAQ 1", "FAQ 2", "FAQ 3", "FAQ 4", "FAQ 5", "FAQ 6"]) {
+    bindColumn(
+      table,
+      column_map,
+      [faqCol],
+      metafieldMapping("custom", "product_faq", "faq_columns"),
+      extra_mappings,
+      true,
+    );
+  }
+  bindColumn(
+    table,
+    column_map,
+    ["artist"],
+    metafieldMapping("custom", "product_maker_story", "story_maker_json"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["how it s made heading", "how it's made - heading"],
+    metafieldMapping("custom", "product_process_story", "story_process_json"),
+    extra_mappings,
+  );
+  const processStepCols: Array<[string, string]> = [
+    ["Canvas Preparation Process", "Canvas preparation"],
+    ["Detailing & Brushwork", "Detailing & brushwork"],
+    ["Color Layering & Finishing", "Color layering & finishing"],
+  ];
+  for (const [colName, stepTitle] of processStepCols) {
+    bindColumn(
+      table,
+      column_map,
+      [colName],
+      metafieldMapping("custom", "product_process_story", "story_process_json", "replace", {
+        step_title: stepTitle,
+      }),
+      extra_mappings,
+      true,
+    );
+  }
+  bindColumn(
+    table,
+    column_map,
+    ["understanding the painting heading", "understanding the painting - heading"],
+    metafieldMapping("custom", "product_heritage_story", "story_heritage_json"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["paintning details subject", "painting details subject"],
+    metafieldMapping("custom", "filter_subject", "clean_text"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["region"],
+    metafieldMapping("custom", "filter_region", "clean_text"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["style"],
+    metafieldMapping("custom", "filter_style", "clean_text"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["tradition"],
+    metafieldMapping("custom", "filter_tradition", "clean_text"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["medium"],
+    metafieldMapping("custom", "filter_material", "clean_text"),
+    extra_mappings,
+    true,
+  );
 }
 
 function bindEthnicProfile(
   table: ExcelTable,
   column_map: MappingConfig["column_map"],
+  extra_mappings: ExtraColumnMapping[],
 ): void {
   bindColumn(table, column_map, CORE_ALIASES.title, {
     target: "title",
@@ -257,43 +487,137 @@ function bindEthnicProfile(
 
   const detailColumns: Array<[string[], string]> = [
     [["outfit type"], "Outfit type"],
-    [["fabric"], "Fabric"],
-    [["color"], "Color"],
-    [["craft technique", "work style"], "Craft technique"],
-    [["pattern"], "Pattern"],
+    [["fabric 2", "fabric"], "Fabric"],
+    [["color palatte", "color"], "Color"],
+    [["work style", "craft technique"], "Craft technique"],
+    [["design pattern", "pattern"], "Pattern"],
     [["fit", "sleeve style"], "Style"],
     [["occasion"], "Occasion"],
+    [["set includes 2", "set includes"], "Set includes"],
     [["origin"], "Origin"],
+    [["style inspiration"], "Style inspiration"],
     [["weight"], "Weight"],
   ];
   for (const [candidates, label] of detailColumns) {
-    bindColumn(table, column_map, candidates, kvDetailMapping(label));
+    bindColumn(table, column_map, candidates, kvDetailMapping(label), extra_mappings, true);
   }
 
+  for (const [sizeCol, label] of [
+    ["S", "Size S"],
+    ["M", "Size M"],
+    ["L", "Size L"],
+  ] as const) {
+    bindColumn(
+      table,
+      column_map,
+      [sizeCol],
+      metafieldMapping("custom", "product_measurements", "kv_column", "merge_kv", {
+        kv_label: label,
+      }),
+      extra_mappings,
+      true,
+    );
+  }
+  bindColumn(
+    table,
+    column_map,
+    ["size guides in inches", "size guides"],
+    metafieldMapping("custom", "product_measurement_note", "clean_text"),
+    extra_mappings,
+  );
   bindColumn(table, column_map, ["whats included", "what's included"], {
     ...metafieldMapping("custom", "product_whats_included", "lines_to_list"),
-  });
+  }, extra_mappings);
   bindColumn(table, column_map, ["care instruction", "care instructions"], {
     ...metafieldMapping("custom", "product_care_instructions", "lines_to_list"),
-  });
-  bindColumn(table, column_map, ["artisan impact"], {
+  }, extra_mappings);
+  bindColumn(table, column_map, ["artisans impact", "artisan impact"], {
     ...metafieldMapping("custom", "product_impact_stats", "impact_stats"),
-  });
-  bindColumn(table, column_map, ["the curation story", "the maker", "curation story"], {
-    ...metafieldMapping("custom", "product_maker_story", "story_maker_json"),
-  });
-  bindColumn(table, column_map, ["the tradition", "the heritage", "heritage story"], {
-    ...metafieldMapping("custom", "product_heritage_story", "story_heritage_json"),
-  });
-  bindColumn(table, column_map, ["color"], {
-    ...metafieldMapping("custom", "filter_color", "clean_text"),
-  });
-  bindColumn(table, column_map, ["fabric"], {
-    ...metafieldMapping("custom", "filter_fabric", "clean_text"),
-  });
-  bindColumn(table, column_map, ["occasion"], {
-    ...metafieldMapping("custom", "filter_occasion", "comma_to_list"),
-  });
+  }, extra_mappings);
+  bindColumn(
+    table,
+    column_map,
+    ["artisans impact", "artisan impact"],
+    metafieldMapping("custom", "product_impact_note", "impact_note"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["faqs", "faq"],
+    metafieldMapping("custom", "product_faq", "faq_columns"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["the weaver", "the curation story", "the maker", "curation story"],
+    metafieldMapping("custom", "product_maker_story", "story_maker_json"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["the making", "how it's made", "how its made"],
+    metafieldMapping("custom", "product_process_story", "story_process_json"),
+    extra_mappings,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["the fabric", "the tradition", "the heritage", "heritage story"],
+    metafieldMapping("custom", "product_heritage_story", "story_heritage_json"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["color"],
+    metafieldMapping("custom", "filter_color", "clean_text"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["fabric 2", "fabric"],
+    metafieldMapping("custom", "filter_fabric", "clean_text"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["outfit type"],
+    metafieldMapping("custom", "filter_product_type", "clean_text"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["occasion"],
+    metafieldMapping("custom", "filter_occasion", "comma_to_list"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["craft technique", "work style"],
+    metafieldMapping("custom", "filter_tradition", "clean_text"),
+    extra_mappings,
+    true,
+  );
+  bindColumn(
+    table,
+    column_map,
+    ["origin"],
+    metafieldMapping("custom", "filter_region", "clean_text"),
+    extra_mappings,
+    true,
+  );
 }
 
 function bindJewelleryProfile(
@@ -351,6 +675,9 @@ function bindJewelleryProfile(
   bindColumn(table, column_map, ["jewellery type", "jewelry type"], {
     ...metafieldMapping("custom", "filter_jewelry_type", "clean_text"),
   }, extra_mappings);
+  bindColumn(table, column_map, ["jewellery type", "jewelry type"], {
+    ...metafieldMapping("custom", "filter_product_type", "clean_text"),
+  }, extra_mappings);
   bindColumn(table, column_map, ["base material", "material"], {
     ...metafieldMapping("custom", "filter_material", "clean_text"),
   }, extra_mappings);
@@ -377,11 +704,11 @@ export function applyArthenicColumnProfile(
   ];
 
   if (template === "sculpture") {
-    bindDecorProfile(table, column_map);
+    bindDecorProfile(table, column_map, extra_mappings);
   } else if (template === "paintings") {
-    bindPaintingsProfile(table, column_map);
+    bindPaintingsProfile(table, column_map, extra_mappings);
   } else if (template === "ethnic-wear") {
-    bindEthnicProfile(table, column_map);
+    bindEthnicProfile(table, column_map, extra_mappings);
   } else if (template === "jewellery") {
     bindJewelleryProfile(table, column_map, extra_mappings);
   }
@@ -482,6 +809,92 @@ function stripCoreColumnsFromMetafields(
       delete column_map[column];
     }
   }
+}
+
+export function mergeMissingMappings(
+  table: ExcelTable,
+  primary: MappingConfig,
+  fallback: MappingConfig,
+): MappingConfig {
+  const column_map = { ...primary.column_map };
+  const extra_mappings = [...(primary.extra_mappings ?? [])];
+
+  // Drop empty summary "Product Details" mapping if individual kv_column mappings exist
+  const hasIndividualDetails = Object.values(fallback.column_map).some(
+    (entry) =>
+      entry.target === "metafield" &&
+      entry.namespace === "custom" &&
+      entry.key === "product_details" &&
+      entry.transform === "kv_column",
+  );
+  if (hasIndividualDetails && column_map["Product Details"]?.key === "product_details") {
+    const colIndex = table.headers.indexOf("Product Details");
+    const allEmpty =
+      colIndex >= 0 &&
+      table.rows.every((row) => !(row[colIndex] ?? "").trim());
+    if (allEmpty) {
+      delete column_map["Product Details"];
+    }
+  }
+
+  for (const [col, entry] of Object.entries(fallback.column_map)) {
+    if (!column_map[col]) {
+      column_map[col] = entry;
+      continue;
+    }
+    const cur = column_map[col];
+    const sameMetafield =
+      cur.target === "metafield" &&
+      entry.target === "metafield" &&
+      cur.namespace === entry.namespace &&
+      cur.key === entry.key;
+    if (sameMetafield && cur.transform === "identity") {
+      column_map[col] = entry;
+    } else if (
+      entry.target === "metafield" &&
+      cur.target === "metafield" &&
+      (cur.namespace !== entry.namespace || cur.key !== entry.key)
+    ) {
+      const alreadyExtra = extra_mappings.some(
+        (item) =>
+          item.source_column === col &&
+          item.target === entry.target &&
+          item.namespace === entry.namespace &&
+          item.key === entry.key,
+      );
+      if (!alreadyExtra) {
+        extra_mappings.push({ source_column: col, ...entry });
+      }
+    }
+  }
+
+  for (const extra of fallback.extra_mappings ?? []) {
+    const primaryCol = column_map[extra.source_column];
+    const coveredByPrimary =
+      primaryCol &&
+      primaryCol.target === extra.target &&
+      primaryCol.namespace === extra.namespace &&
+      primaryCol.key === extra.key;
+    if (coveredByPrimary) {
+      continue;
+    }
+    const alreadyExtra = extra_mappings.some(
+      (item) =>
+        item.source_column === extra.source_column &&
+        item.target === extra.target &&
+        item.namespace === extra.namespace &&
+        item.key === extra.key,
+    );
+    if (!alreadyExtra) {
+      extra_mappings.push(extra);
+    }
+  }
+
+  return {
+    ...primary,
+    column_map,
+    ...(extra_mappings.length > 0 ? { extra_mappings } : {}),
+  };
 }
 
 export function ensureCoreMappings(

@@ -10,8 +10,10 @@ import type {
 import {
   cleanText,
   commaToList,
+  dimensionsBlock,
   faqColumns,
   htmlParagraphs,
+  impactNote,
   impactStats,
   kvColumn,
   kvLines,
@@ -118,9 +120,14 @@ function applyTransform(
     case "story_styling_json":
       return storyStylingJson(raw, policy);
     case "impact_note":
-      return cleanText(raw, policy);
-    case "dimensions_block":
-      return { note: cleanText(raw, policy) };
+      return impactNote(raw, policy);
+    case "dimensions_block": {
+      const part =
+        params?.part === "highlight" || params?.part === "note"
+          ? params.part
+          : "measurements";
+      return dimensionsBlock(raw, policy, part);
+    }
     case "kv_column":
       return kvColumn(
         raw,
@@ -316,6 +323,23 @@ export function buildProductDrafts(
             warnings.push(`metafield mapping missing namespace/key for ${sourceColumn}`);
             break;
           }
+          if (
+            columnMapping.transform === "story_process_json" &&
+            typeof columnMapping.transform_params?.step_title === "string"
+          ) {
+            const stepDesc = cleanText(raw, policy);
+            transformed = stepDesc
+              ? {
+                  eyebrow: "How it's made",
+                  steps: [
+                    {
+                      title: columnMapping.transform_params.step_title,
+                      description: stepDesc,
+                    },
+                  ],
+                }
+              : {};
+          }
           const shopifyType = fieldTypeForMetafield(
             schema,
             columnMapping.namespace,
@@ -335,15 +359,18 @@ export function buildProductDrafts(
             );
           }
 
-          if (shopifyType.startsWith("list.") && typeof transformed === "string" && transformed.trim()) {
-            if (transformed.startsWith("[") && transformed.endsWith("]")) {
+          if (shopifyType.startsWith("list.") && typeof transformed === "string") {
+            const trimmed = transformed.trim();
+            if (!trimmed) {
+              transformed = [];
+            } else if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
               try {
-                transformed = JSON.parse(transformed);
+                transformed = JSON.parse(trimmed);
               } catch {
-                transformed = [transformed];
+                transformed = [trimmed];
               }
             } else {
-              transformed = [transformed];
+              transformed = [trimmed];
             }
           }
 
@@ -364,7 +391,9 @@ export function buildProductDrafts(
 
               const newItems = Array.isArray(transformed)
                 ? (transformed as string[])
-                : [String(transformed)];
+                : String(transformed ?? "").trim()
+                  ? [String(transformed).trim()]
+                  : [];
 
               const kvMap = new Map<string, string>();
               for (const item of [...existingList, ...newItems]) {
@@ -379,6 +408,30 @@ export function buildProductDrafts(
               }
               const mergedList = Array.from(kvMap.values());
               existing.value = JSON.stringify(mergedList);
+            } else if (
+              shopifyType === "json" &&
+              transformed &&
+              typeof transformed === "object" &&
+              !Array.isArray(transformed)
+            ) {
+              try {
+                const prev = JSON.parse(String(existing.value)) as Record<string, unknown>;
+                const nextObj = transformed as Record<string, unknown>;
+                const merged: Record<string, unknown> = { ...prev };
+                for (const [k, v] of Object.entries(nextObj)) {
+                  if (Array.isArray(v) && Array.isArray(prev[k])) {
+                    merged[k] = [...(prev[k] as unknown[]), ...v];
+                  } else if (v !== undefined && v !== null && v !== "") {
+                    merged[k] = v;
+                  }
+                }
+                existing.value = JSON.stringify(merged);
+              } catch {
+                const nextSerialized = serializeMetafieldValue(shopifyType, transformed);
+                if (nextSerialized && nextSerialized !== "[]" && nextSerialized !== "{}") {
+                  existing.value = nextSerialized;
+                }
+              }
             } else {
               const nextSerialized = serializeMetafieldValue(shopifyType, transformed);
               if (nextSerialized && nextSerialized !== "[]" && nextSerialized !== "{}") {

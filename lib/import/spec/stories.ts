@@ -127,6 +127,44 @@ function splitProcessStepLines(text: string): string[] {
   return [cleaned];
 }
 
+function extractPersonName(text: string): string {
+  for (const pattern of [
+    /\b([A-Z][a-z]+)\s+grew up\b/,
+    /\bFor\s+([A-Z][a-z]+),/,
+    /curated by\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+    /led by\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),\s*Founder\s*&\s*Curator/i,
+    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),\s*founder of ARTHENIC/i,
+  ]) {
+    const match = text.match(pattern);
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+  }
+  return "";
+}
+
+function splitMetaFooter(text: string): { body: string; meta: string[] } {
+  const inline = text.match(/\.\s+(\d+\+?\s*yrs?.+)$/i);
+  if (inline && inline.index !== undefined) {
+    const body = text.slice(0, inline.index).trim();
+    const meta = inline[1]
+      .split(/[·•|]/)
+      .map((part) => part.trim().replace(/\.$/, ""))
+      .filter(Boolean);
+    return { body, meta };
+  }
+  return { body: text, meta: [] };
+}
+
+function groupSentences(sentences: string[], size: number): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < sentences.length; i += size) {
+    out.push(sentences.slice(i, i + size).join(" "));
+  }
+  return out;
+}
+
 export function buildMakerStoryJson(text: string): Record<string, unknown> {
   const cleaned = clean(text);
   if (!cleaned || isPlaceholder(cleaned)) {
@@ -136,22 +174,67 @@ export function buildMakerStoryJson(text: string): Record<string, unknown> {
   const lines = cleaned.split("\n");
   const first = lines[0]?.trim() ?? "";
   const rest = lines.slice(1).join("\n").trim();
-  const { role, name } = parseRoleName(first);
-  const { body, quote } = extractQuoteBlock(rest || cleaned);
+  const parsedRole = parseRoleName(first);
 
-  let introParagraphs = paragraphs(body || rest);
+  if (parsedRole.role) {
+    const { body, quote } = extractQuoteBlock(rest || cleaned);
+    const introParagraphs = paragraphs(body || rest);
+    return dropEmpty({
+      eyebrow:
+        parsedRole.role.split(" ")[1]?.toLowerCase() === "artist"
+          ? "The artist"
+          : parsedRole.role,
+      name: parsedRole.name || undefined,
+      intro_paragraphs: introParagraphs.length > 0 ? introParagraphs : undefined,
+      quote: quote ?? undefined,
+    });
+  }
+
+  // Handle prose-style maker / curator / weaver story blocks
+  const { body: withoutFooter, meta: rawMeta } = splitMetaFooter(cleaned);
+  const { body, quote } = extractQuoteBlock(withoutFooter);
+  const stats: Array<{ value: string; label: string }> = [];
+  const meta: string[] = [];
+  for (const part of rawMeta) {
+    const yr = part.match(/^(\d+\+?\s*yrs?)\s+(.+)$/i);
+    if (yr) {
+      stats.push({ value: yr[1].trim(), label: yr[2].trim() });
+    } else {
+      meta.push(part);
+    }
+  }
+
+  const sentences = splitSentences(body);
+  const heading = sentences[0]?.replace(/\.$/, "") ?? "";
+  const remaining = sentences.slice(1);
+  const name = extractPersonName(cleaned) || (first.length <= 60 ? first : "");
+  const role = /founder\s*&\s*curator/i.test(cleaned)
+    ? "Founder & Curator, ARTHENIC"
+    : name && /arthenic/i.test(cleaned)
+      ? "Founder, ARTHENIC"
+      : undefined;
+
+  let introParagraphs: string[] = [];
   let closingParagraphs: string[] | undefined;
-  if (!role && introParagraphs.length > 1) {
-    closingParagraphs = introParagraphs.slice(-1);
-    introParagraphs = introParagraphs.slice(0, -1);
+  if (quote) {
+    introParagraphs = groupSentences(remaining, 2);
+  } else if (remaining.length > 1) {
+    introParagraphs = groupSentences(remaining.slice(0, -1), 2);
+    closingParagraphs = [remaining[remaining.length - 1]];
+  } else if (remaining.length === 1) {
+    introParagraphs = remaining;
   }
 
   return dropEmpty({
-    eyebrow: role ? role.split(" ")[1]?.toLowerCase() === "artist" ? "The artist" : role : undefined,
+    eyebrow: /weaver/i.test(cleaned) ? "The weaver" : "The maker",
+    heading_html: heading || undefined,
     name: name || undefined,
+    role,
     intro_paragraphs: introParagraphs.length > 0 ? introParagraphs : undefined,
     quote: quote ?? undefined,
     closing_paragraphs: closingParagraphs,
+    stats: stats.length > 0 ? stats : undefined,
+    meta: meta.length > 0 ? meta : undefined,
   });
 }
 

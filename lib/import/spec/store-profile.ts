@@ -1,6 +1,8 @@
 import type { Prisma, Shop } from "@/generated/prisma/client";
+import { prisma, withDbRetry } from "@/lib/db/prisma";
 import { updateShopConfig } from "@/lib/db/shops";
-import { prisma } from "@/lib/db/prisma";import { DEFAULT_IMPORT_POLICY } from "@/lib/import/spec/import-policy";
+import { buildImportPromptPack } from "@/lib/import/prompt-pack";
+import { DEFAULT_IMPORT_POLICY } from "@/lib/import/spec/import-policy";
 import { buildStoreSchema, type ThemeMetafieldUsage } from "@/lib/import/spec/schema-discovery";
 import {
   discoverThemeMetafields,
@@ -11,9 +13,24 @@ import type {
   MappingConfig,
   StoreProfile,
 } from "@/lib/import/spec/types";
+import {
+  buildDefaultImportSystemPrompt,
+  isLegacySystemPrompt,
+  readImportSystemPromptFromSettings,
+} from "@/lib/import/system-prompt";
 import type { MetafieldDefinitionNode } from "@/types/shopify";
 
 const PROFILE_KEY = "importStoreProfile";
+const ENRICHMENT_TIMEOUT_MS = 8_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Theme enrichment timed out")), ms),
+    ),
+  ]);
+}
 
 function readSettingsRecord(
   settings: Prisma.JsonValue | null | undefined,
@@ -59,8 +76,8 @@ export async function upsertStoreProfileForShop(input: {
   let sampleValues: Map<string, string[]> | undefined;
   if (input.shop) {
     const [themeRes, sampleRes] = await Promise.allSettled([
-      discoverThemeMetafields(input.shop),
-      sampleStoreProductMetafields(input.shop),
+      withTimeout(discoverThemeMetafields(input.shop), ENRICHMENT_TIMEOUT_MS),
+      withTimeout(sampleStoreProductMetafields(input.shop), ENRICHMENT_TIMEOUT_MS),
     ]);
     themeMetafields = themeRes.status === "fulfilled" ? themeRes.value : undefined;
     sampleValues = sampleRes.status === "fulfilled" ? sampleRes.value : undefined;
@@ -74,31 +91,48 @@ export async function upsertStoreProfileForShop(input: {
     sampleValues,
   });
 
-  const existing = await prisma.shopConfig.findUnique({
-    where: { shopId: input.shopId },
-    select: { settings: true },
-  });
+  const existing = await withDbRetry(() =>
+    prisma.shopConfig.findUnique({
+      where: { shopId: input.shopId },
+      select: { settings: true },
+    }),
+  );
   const settings = readSettingsRecord(existing?.settings);
   const prior = readStoreProfile(settings as Prisma.JsonValue);
+  const storedPrompt = readImportSystemPromptFromSettings(settings as Prisma.JsonValue);
+  const candidatePrompt =
+    input.systemPrompt ??
+    (prior?.system_prompt && !isLegacySystemPrompt(prior.system_prompt)
+      ? prior.system_prompt
+      : undefined) ??
+    (storedPrompt && !isLegacySystemPrompt(storedPrompt)
+      ? storedPrompt
+      : undefined);
+
+  const importPolicy =
+    input.importPolicy ?? prior?.import_policy ?? DEFAULT_IMPORT_POLICY;
 
   const profile: StoreProfile = {
     schema,
-    system_prompt: input.systemPrompt ?? prior?.system_prompt ?? "",
+    system_prompt:
+      candidatePrompt ||
+      buildDefaultImportSystemPrompt(
+        buildImportPromptPack(input.definitions),
+        schema,
+        importPolicy,
+      ),
     mapping_config: input.mappingConfig ?? prior?.mapping_config ?? emptyMappingConfig(),
-    import_policy: input.importPolicy ?? prior?.import_policy ?? DEFAULT_IMPORT_POLICY,
+    import_policy: importPolicy,
     updated_at: new Date().toISOString(),
   };
 
-  if (!profile.system_prompt) {
-    const lines = schema.metafields.map(
-      (field) =>
-        `- ${field.namespace}.${field.key} (${field.shopify_type}): ${field.name}`,
-    );
-    profile.system_prompt = `You are a Shopify catalog mapping assistant.\n\nStore schema:\n${lines.join("\n")}`;
-  }
-
   await updateShopConfig(input.shopId, {
-    settings: { [PROFILE_KEY]: profile },
+    settings: {
+      [PROFILE_KEY]: profile,
+      ...(input.systemPrompt || !storedPrompt || isLegacySystemPrompt(storedPrompt)
+        ? { importSystemPrompt: profile.system_prompt }
+        : {}),
+    },
   });
 
   return profile;

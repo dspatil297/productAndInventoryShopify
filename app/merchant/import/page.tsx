@@ -8,6 +8,7 @@ import { getExcelMapJob } from "@/lib/import/excel-map-jobs";
 import { readStoreProfile } from "@/lib/import/spec/store-profile";
 import {
   buildDefaultImportSystemPrompt,
+  isLegacySystemPrompt,
   readImportSystemPromptFromSettings,
 } from "@/lib/import/system-prompt";
 import {
@@ -48,15 +49,22 @@ export default async function MerchantImportPage({
     promptPack = await ensureImportPromptPack(shop.id, definitions, promptPack);
   }
 
-  let systemPrompt: string | undefined =
-    readStoreProfile(shopWithConfig?.config?.settings)?.system_prompt;
-  if (!systemPrompt) {
-    systemPrompt =
-      readImportSystemPromptFromSettings(shopWithConfig?.config?.settings) ??
-      undefined;
+  const storeProfile = readStoreProfile(shopWithConfig?.config?.settings);
+  let systemPrompt: string | undefined = storeProfile?.system_prompt;
+  if (isLegacySystemPrompt(systemPrompt)) {
+    const savedPrompt = readImportSystemPromptFromSettings(
+      shopWithConfig?.config?.settings,
+    );
+    systemPrompt = isLegacySystemPrompt(savedPrompt)
+      ? undefined
+      : (savedPrompt ?? undefined);
   }
   if (!systemPrompt && promptPack) {
-    systemPrompt = buildDefaultImportSystemPrompt(promptPack);
+    systemPrompt = buildDefaultImportSystemPrompt(
+      promptPack,
+      storeProfile?.schema,
+      storeProfile?.import_policy,
+    );
   }
   if (!systemPrompt) {
     systemPrompt = "Refresh import columns to generate the system prompt.";

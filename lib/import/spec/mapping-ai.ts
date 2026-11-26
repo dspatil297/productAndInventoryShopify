@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { sampleExcelRows, type ExcelTable } from "@/lib/import/excel-parse";
 import { AiImportConfigError, AiImportMapError } from "@/lib/import/ai-map-columns";
+import { isLegacySystemPrompt } from "@/lib/import/system-prompt";
 import type {
   ImportPolicy,
   MappingConfig,
@@ -159,7 +160,7 @@ export function heuristicMappingConfig(
     ],
     "variant.price": ["price", "mrp", "list price", "sale price"],
     "variant.sku": ["sku", "sku code", "sku_code"],
-    template_suffix: ["template", "theme", "category", "page template"],
+    template_suffix: ["template", "theme", "template suffix", "product template", "page template"],
   };
 
   const mapSource = (candidates: string[]): string | null => {
@@ -190,12 +191,16 @@ export function heuristicMappingConfig(
         continue;
       }
       const headerNorm = normalize(header);
+      if (headerNorm.length < 4) {
+        continue;
+      }
       if (
         fieldNorms.some(
           (candidate) =>
-            headerNorm === candidate ||
-            headerNorm.includes(candidate) ||
-            candidate.includes(headerNorm),
+            candidate.length >= 4 &&
+            (headerNorm === candidate ||
+              headerNorm.includes(candidate) ||
+              candidate.includes(headerNorm)),
         )
       ) {
         return header;
@@ -297,7 +302,78 @@ export function heuristicMappingConfig(
   };
 }
 
-const AI_MAPPING_TIMEOUT_MS = 18_000;
+const AI_MAPPING_TIMEOUT_MS = 28_000;
+
+const MAPPING_JSON_CONTRACT = `Return ONLY valid JSON:
+{
+  "column_map": { "<Exact Excel Header>": { "target": "title|body_html|handle|template_suffix|variant.price|variant.compare_at_price|variant.sku|tags|metafield|ignore", "namespace": "custom", "key": "...", "transform": "clean_text|html_paragraphs|sale_from_list|kv_column|kv_lines|dimensions_block|lines_to_list|comma_to_list|impact_stats|impact_note|faq_columns|story_maker_json|story_process_json|story_heritage_json|story_styling_json|slugify", "transform_params": {}, "merge_strategy": "replace|merge_kv|merge_text|skip_if_empty" } },
+  "extra_mappings": [{ "source_column": "<Exact Excel Header>", "target": "metafield", "namespace": "custom", "key": "...", "transform": "..." }],
+  "handle_strategy": { "primary": "slugify", "source_column": "<Title Header>", "overrides": {} },
+  "template_map": { "painting": "paintings", "ethnic": "ethnic-wear", "jewel": "jewellery", "decor": "sculpture", "sculpture": "sculpture" },
+  "notes": []
+}`;
+
+function inferMetafieldTransform(
+  schema: StoreSchema,
+  namespace: string,
+  key: string,
+  sourceColumn: string,
+  samples: Array<Record<string, string>>,
+): {
+  transform: TransformId;
+  transform_params?: Record<string, unknown>;
+  merge_strategy?: "replace" | "merge_kv" | "merge_text" | "skip_if_empty";
+} {
+  const field = schema.metafields.find(
+    (item) => item.namespace === namespace && item.key === key,
+  );
+  const loweredKey = key.toLowerCase();
+
+  if (field?.value_kind === "json" || loweredKey.includes("story")) {
+    return { transform: storyTransformForKey(key) };
+  }
+  if (loweredKey === "product_impact_note") {
+    return { transform: "impact_note" };
+  }
+  if (field?.parse_hint === "impact_stats" || loweredKey.includes("impact_stats")) {
+    return { transform: "impact_stats" };
+  }
+  if (field?.parse_hint === "faq_pipe" || loweredKey.includes("faq")) {
+    return { transform: "faq_columns" };
+  }
+  if (loweredKey === "product_measurements") {
+    return { transform: "dimensions_block", merge_strategy: "merge_kv" };
+  }
+  if (loweredKey === "product_measurement_highlight") {
+    return { transform: "dimensions_block", transform_params: { part: "highlight" } };
+  }
+  if (loweredKey === "product_measurement_note") {
+    return { transform: "dimensions_block", transform_params: { part: "note" } };
+  }
+  if (field?.parse_hint === "kv_lines" || loweredKey === "product_details") {
+    const sampleValues = samples
+      .map((row) => String(row[sourceColumn] ?? "").trim())
+      .filter(Boolean);
+    const looksMultiKv = sampleValues.some(
+      (val) => /^K:\s*.+\s+V:\s*.+/im.test(val) || (val.includes("\n") && /^[^:]{1,60}:/m.test(val)),
+    );
+    if (looksMultiKv) {
+      return { transform: "kv_lines", merge_strategy: "merge_kv" };
+    }
+    return {
+      transform: "kv_column",
+      transform_params: { kv_label: sourceColumn },
+      merge_strategy: "merge_kv",
+    };
+  }
+  if (field?.shopify_type === "list.single_line_text_field" || field?.value_kind === "string_list") {
+    if (loweredKey.startsWith("filter_")) {
+      return { transform: "comma_to_list" };
+    }
+    return { transform: "lines_to_list" };
+  }
+  return { transform: "clean_text" };
+}
 
 export async function suggestMappingConfigWithAi(input: {
   table: ExcelTable;
@@ -315,20 +391,33 @@ export async function suggestMappingConfigWithAi(input: {
     shopify_type: field.shopify_type,
     parse_hint: field.parse_hint,
     in_theme: field.in_theme,
-    ...(field.liquid_hints?.length ? { liquid_hints: field.liquid_hints } : {}),
-    ...(field.sample_values?.length ? { sample_values: field.sample_values } : {}),
+    ...(field.liquid_hints?.length
+      ? { liquid_hints: field.liquid_hints.slice(0, 1).map((h) => h.slice(0, 100)) }
+      : {}),
+    ...(field.sample_values?.length
+      ? { sample_values: field.sample_values.slice(0, 1).map((v) => v.slice(0, 100)) }
+      : {}),
   }));
+  const systemMessage = isLegacySystemPrompt(input.systemPrompt)
+    ? `${input.systemPrompt}\n\n${MAPPING_JSON_CONTRACT}`
+    : input.systemPrompt;
+
   const userContent = [
-    `Excel headers: ${input.table.headers.join(", ")}`,
+    `Excel headers: ${JSON.stringify(input.table.headers)}`,
     `Sample rows: ${JSON.stringify(samples)}`,
-    `Store schema (with frontend Liquid usage & existing product sample values): ${JSON.stringify(schemaSummary)}`,
+    `Store schema: ${JSON.stringify(schemaSummary)}`,
     `Import policy: ${JSON.stringify(input.policy)}`,
     input.existing
       ? `Existing mapping: ${JSON.stringify(input.existing.column_map)}`
       : "",
-    "Map EVERY relevant Excel column to core fields or store metafields. Use liquid_hints and sample_values to choose the exact transform (kv_lines, kv_column, lines_to_list, comma_to_list, impact_stats, faq_columns, story_maker_json, story_process_json, story_heritage_json, story_styling_json, dimensions_block, html_paragraphs, clean_text). If one Excel column populates multiple metafields (e.g. a detail line AND a filter_* metafield), put the primary mapping in column_map and additional ones in extra_mappings with source_column.",
+    "Map EVERY non-empty relevant Excel column to core fields or store metafields.",
+    "Skip columns whose sample values are all empty (such as an empty 'Product Details' column) and instead map each individual attribute column (Material, Fabric, Color, Base Material, Stones, Weight, Finish, Tradition, Region, Medium, etc.) to custom.product_details with transform='kv_column', transform_params={\"kv_label\":\"<Label>\"}, merge_strategy='merge_kv'.",
+    "When one Excel column populates both custom.product_details and a custom.filter_* metafield (or Artisan Impact populates both product_impact_stats and product_impact_note), put the primary mapping in column_map and the extra one(s) in extra_mappings with source_column.",
+    "Use exact transforms: kv_column, kv_lines, dimensions_block, lines_to_list, comma_to_list, impact_stats, impact_note, faq_columns, story_maker_json, story_process_json, story_heritage_json, story_styling_json, sale_from_list, html_paragraphs, clean_text.",
     "Return JSON with column_map keyed by exact Excel header names.",
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const response = await fetch(config.baseUrl, {
     method: "POST",
@@ -341,7 +430,7 @@ export async function suggestMappingConfigWithAi(input: {
       model: config.model,
       temperature: 0,
       messages: [
-        { role: "system", content: input.systemPrompt },
+        { role: "system", content: systemMessage },
         { role: "user", content: userContent },
       ],
       response_format: { type: "json_object" },
@@ -372,86 +461,86 @@ export async function suggestMappingConfigWithAi(input: {
     throw new AiImportMapError("AI mapping returned invalid JSON");
   }
 
-const VALID_TARGETS = new Set([
-  "title",
-  "body_html",
-  "handle",
-  "template_suffix",
-  "variant.price",
-  "variant.compare_at_price",
-  "variant.sku",
-  "tags",
-  "metafield",
-  "ignore",
-]);
+  const VALID_TARGETS = new Set([
+    "title",
+    "body_html",
+    "handle",
+    "template_suffix",
+    "variant.price",
+    "variant.compare_at_price",
+    "variant.sku",
+    "tags",
+    "metafield",
+    "ignore",
+  ]);
 
-const TARGET_ALIASES: Record<string, string> = {
-  description: "body_html",
-  body: "body_html",
-  price: "variant.price",
-  compare_at_price: "variant.compare_at_price",
-  sku: "variant.sku",
-  template: "template_suffix",
-};
+  const TARGET_ALIASES: Record<string, string> = {
+    description: "body_html",
+    body: "body_html",
+    price: "variant.price",
+    compare_at_price: "variant.compare_at_price",
+    sku: "variant.sku",
+    template: "template_suffix",
+  };
 
-const VALID_TRANSFORMS = new Set<string>(transformIds);
-const VALID_MERGE_STRATEGIES = new Set([
-  "replace",
-  "merge_kv",
-  "merge_text",
-  "skip_if_empty",
-]);
+  const VALID_TRANSFORMS = new Set<string>(transformIds);
+  const VALID_MERGE_STRATEGIES = new Set([
+    "replace",
+    "merge_kv",
+    "merge_text",
+    "skip_if_empty",
+  ]);
 
-function normalizeMappingEntry(val: unknown): Record<string, unknown> | null {
-  if (typeof val === "string" && val.trim()) {
-    const mapped = TARGET_ALIASES[val.trim()] ?? val.trim();
-    return {
-      target: VALID_TARGETS.has(mapped) ? mapped : "ignore",
-      transform: "identity",
-    };
-  }
-  if (!val || typeof val !== "object" || Array.isArray(val)) {
-    return null;
-  }
-  const entry = { ...(val as Record<string, unknown>) };
-  if (typeof entry.target === "string") {
-    const mapped = TARGET_ALIASES[entry.target.trim()] ?? entry.target.trim();
-    if (mapped.includes(".") && !mapped.startsWith("variant.")) {
-      const [ns, ...rest] = mapped.split(".");
-      entry.target = "metafield";
-      entry.namespace = entry.namespace ?? ns;
-      entry.key = entry.key ?? rest.join(".");
-    } else if (VALID_TARGETS.has(mapped)) {
-      entry.target = mapped;
-    } else if (
-      typeof entry.namespace === "string" &&
-      typeof entry.key === "string"
-    ) {
-      entry.target = "metafield";
-    } else {
-      entry.target = "ignore";
+  function normalizeMappingEntry(val: unknown): Record<string, unknown> | null {
+    if (typeof val === "string" && val.trim()) {
+      const mapped = TARGET_ALIASES[val.trim()] ?? val.trim();
+      return {
+        target: VALID_TARGETS.has(mapped) ? mapped : "ignore",
+        transform: "identity",
+      };
     }
-  } else {
-    entry.target =
-      typeof entry.namespace === "string" && typeof entry.key === "string"
-        ? "metafield"
-        : "ignore";
-  }
+    if (!val || typeof val !== "object" || Array.isArray(val)) {
+      return null;
+    }
+    const entry = { ...(val as Record<string, unknown>) };
+    if (typeof entry.target === "string") {
+      const mapped = TARGET_ALIASES[entry.target.trim()] ?? entry.target.trim();
+      if (mapped.includes(".") && !mapped.startsWith("variant.")) {
+        const [ns, ...rest] = mapped.split(".");
+        entry.target = "metafield";
+        entry.namespace = entry.namespace ?? ns;
+        entry.key = entry.key ?? rest.join(".");
+      } else if (VALID_TARGETS.has(mapped)) {
+        entry.target = mapped;
+      } else if (
+        typeof entry.namespace === "string" &&
+        typeof entry.key === "string"
+      ) {
+        entry.target = "metafield";
+      } else {
+        entry.target = "ignore";
+      }
+    } else {
+      entry.target =
+        typeof entry.namespace === "string" && typeof entry.key === "string"
+          ? "metafield"
+          : "ignore";
+    }
 
-  if (
-    typeof entry.transform !== "string" ||
-    !VALID_TRANSFORMS.has(entry.transform)
-  ) {
-    entry.transform = "identity";
+    if (
+      typeof entry.transform !== "string" ||
+      !VALID_TRANSFORMS.has(entry.transform)
+    ) {
+      entry.transform = "identity";
+    }
+    if (
+      typeof entry.merge_strategy !== "string" ||
+      !VALID_MERGE_STRATEGIES.has(entry.merge_strategy)
+    ) {
+      delete entry.merge_strategy;
+    }
+    return entry;
   }
-  if (
-    typeof entry.merge_strategy !== "string" ||
-    !VALID_MERGE_STRATEGIES.has(entry.merge_strategy)
-  ) {
-    delete entry.merge_strategy;
-  }
-  return entry;
-}
 
   // Normalize common LLM output structures
   if (parsed && typeof parsed === "object") {
@@ -565,21 +654,80 @@ function normalizeMappingEntry(val: unknown): Record<string, unknown> | null {
   }
 
   const headerSet = new Set(input.table.headers);
-  for (const sourceKey of Object.keys(validated.data.column_map)) {
-    if (!headerSet.has(sourceKey)) {
-      throw new AiImportMapError(
-        `AI mapped column "${sourceKey}" is not an Excel header`,
+  const normalizeHeader = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const headerByNorm = new Map(
+    input.table.headers.map((h) => [normalizeHeader(h), h]),
+  );
+
+  const resolvedColumnMap: MappingConfig["column_map"] = {};
+  for (const [rawKey, entry] of Object.entries(validated.data.column_map)) {
+    const sourceKey = headerSet.has(rawKey)
+      ? rawKey
+      : headerByNorm.get(normalizeHeader(rawKey));
+    if (!sourceKey || entry.target === "ignore") {
+      continue;
+    }
+    if (
+      entry.target === "metafield" &&
+      entry.namespace &&
+      entry.key &&
+      (entry.transform === "identity" || entry.transform === "clean_text")
+    ) {
+      const inferred = inferMetafieldTransform(
+        input.schema,
+        entry.namespace,
+        entry.key,
+        sourceKey,
+        samples,
       );
+      resolvedColumnMap[sourceKey] = {
+        ...entry,
+        transform: inferred.transform,
+        transform_params: entry.transform_params ?? inferred.transform_params,
+        merge_strategy: entry.merge_strategy ?? inferred.merge_strategy,
+      };
+    } else {
+      resolvedColumnMap[sourceKey] = entry;
     }
   }
 
-  const validExtraMappings = (validated.data.extra_mappings ?? []).filter((entry) =>
-    headerSet.has(entry.source_column),
-  );
+  const validExtraMappings = (validated.data.extra_mappings ?? [])
+    .map((entry) => {
+      const sourceKey = headerSet.has(entry.source_column)
+        ? entry.source_column
+        : headerByNorm.get(normalizeHeader(entry.source_column));
+      if (!sourceKey || entry.target === "ignore") {
+        return null;
+      }
+      if (
+        entry.target === "metafield" &&
+        entry.namespace &&
+        entry.key &&
+        (entry.transform === "identity" || entry.transform === "clean_text")
+      ) {
+        const inferred = inferMetafieldTransform(
+          input.schema,
+          entry.namespace,
+          entry.key,
+          sourceKey,
+          samples,
+        );
+        return {
+          ...entry,
+          source_column: sourceKey,
+          transform: inferred.transform,
+          transform_params: entry.transform_params ?? inferred.transform_params,
+          merge_strategy: entry.merge_strategy ?? inferred.merge_strategy,
+        };
+      }
+      return { ...entry, source_column: sourceKey };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
   return {
     excel: { header_row: 1 },
-    column_map: validated.data.column_map,
+    column_map: resolvedColumnMap,
     ...(validExtraMappings.length > 0
       ? { extra_mappings: validExtraMappings }
       : {}),
@@ -595,7 +743,7 @@ function normalizeMappingEntry(val: unknown): Record<string, unknown> | null {
     handle_strategy: validated.data.handle_strategy ?? {
       primary: "slugify",
       source_column:
-        Object.entries(validated.data.column_map).find(
+        Object.entries(resolvedColumnMap).find(
           ([, entry]) => entry.target === "title",
         )?.[0] ?? "",
       overrides: {},

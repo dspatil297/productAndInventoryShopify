@@ -113,7 +113,12 @@ export async function regenerateImportSystemPromptAction(
       });
     }
 
-    const systemPrompt = buildDefaultImportSystemPrompt(pack);
+    const existingProfile = readStoreProfile(refreshed?.config?.settings);
+    const systemPrompt = buildDefaultImportSystemPrompt(
+      pack,
+      existingProfile?.schema,
+      existingProfile?.import_policy,
+    );
     const currentSettings =
       typeof refreshed?.config?.settings === "object" &&
       refreshed.config.settings !== null &&
@@ -123,6 +128,15 @@ export async function regenerateImportSystemPromptAction(
 
     await updateShopConfig(shop.id, {
       settings: mergeSystemPromptIntoSettings(currentSettings, systemPrompt),
+    });
+    await upsertStoreProfileForShop({
+      shopId: shop.id,
+      shopDomain: shop.shopDomain,
+      definitions: defList,
+      shop: refreshed ?? shop,
+      systemPrompt,
+      importPolicy: existingProfile?.import_policy,
+      mappingConfig: existingProfile?.mapping_config,
     });
     redirectWithFlash(safeReturn, { promptRegenerated: "1" });
   } catch (error) {

@@ -5,6 +5,7 @@ import {
   assertMappingHasTitleColumn,
   detectArthenicTemplate,
   ensureCoreMappings,
+  mergeMissingMappings,
 } from "@/lib/import/spec/mapping-resolve";
 import {
   heuristicMappingConfig,
@@ -60,8 +61,15 @@ export async function runSpecImportPipeline(input: {
     mappingNotes = `mapping: heuristic (${reason})`;
   }
 
-  if (!usedAiMapping) {
-    mapping = applyArthenicColumnProfile(input.table, mapping);
+  const heuristicBaseline = applyArthenicColumnProfile(
+    input.table,
+    heuristicMappingConfig(input.table, input.profile.schema),
+  );
+
+  if (usedAiMapping) {
+    mapping = mergeMissingMappings(input.table, mapping, heuristicBaseline);
+  } else {
+    mapping = heuristicBaseline;
   }
   mapping = ensureCoreMappings(input.table, mapping);
 

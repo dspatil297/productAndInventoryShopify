@@ -6289,3 +6289,38 @@ npm error A complete log of this run can be found in: C:\Users\dspat\AppData\Loc
 **Summary:** 5/7 checks passed
 **Blockers:** next build, Import mapper self-check
 User checklist: docs/verification/phase-12-checklist.md
+
+---
+
+## Run 2026-11-26T11:46:50.599Z — Phase 12 — AI Excel mapper
+
+- ATTEMPT 1/3 — Required phase files
+- **PASS** — Required phase files
+- ATTEMPT 1/3 — .env.example documents required keys
+- **PASS** — .env.example documents required keys
+- ATTEMPT 1/3 — node_modules present
+- **PASS** — node_modules present
+- ATTEMPT 1/3 — eslint
+- **PASS** — eslint
+- ATTEMPT 1/3 — next build
+- FAIL — next build: next build exited 1
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+-----
+[1m[31mFATAL[39m[0m: An unexpected Turbopack error occurred. A panic log has been written to C:\Users\dspat\AppData\Local\Temp\next-panic-859ec29728eb691167d8241d7f3983a6.log.
+
+To help make Turbopack better, report this error by clicking here: https://bugs.nextjs.org/search?category=turbopack-error-report&title=Turbopack%20Error%3A%20failed%20to%20create%20junction%20point%20at%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5Cpg-587764f78a6c7a9c%22%20pointing%20to%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5C..%5C%5C..%5C%5Cnode_modules%5C%5Cpg%22&body=Turbopack%20version%3A%20%60v16.2.10%60%0ANext.js%20version%3A%20%600.0.0%60%0A%0AError%20message%3A%0A%60%60%60%0Afailed%20to%20create%20junction%20point%20at%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5Cpg-587764f78a6c7a9c%22%20pointing%20to%20%22G%3A%5C%5Cfire%20fist%5C%5Cshopify%20apps%5C%5Cproducts-and-inventory%5C%5C.next%5C%5Cnode_modules%5C%5C..%5C%5C..%5C%5Cnode_modules%5C%5Cpg%22%0A%0ACaused%20by%3A%0A-%20creation%20of%20a%20new%20symbolic%20link%20or%20junction%20point%20failed%3A%20The%20file%20exists.%20%28os%20error%2080%29%0A-%20The%20file%20exists.%20%28os%20error%2080%29%0A%60%60%60&labels=Turbopack,Turbopack%20Panic%20Backtrace
+-----
+
+
+> Build error occurred
+Error [TurbopackInternalError]: failed to create junction point at "G:\\fire fist\\shopify apps\\products-and-inventory\\.next\\node_modules\\pg-587764f78a6c7a9c" pointing to "G:\\fire fist\\shopify apps\\products-and-inventory\\.next\\node_modules\\..\\..\\node_modules\\pg"
+
+Caused by:
+- creation of a new symbolic link or junction point failed: The file exists. (os error 80)
+- The file exists. (os error 80)
+    at ignore-listed frames {
+  type: 'TurbopackInternalError',
+  location: undefined
+}
+- ATTEMPT 2/3 — next build

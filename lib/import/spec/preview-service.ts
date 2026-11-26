@@ -36,11 +36,13 @@ function mergeMetafieldValue(
   oldValue: string,
   newValue: string,
 ): string {
+  const normalizedOld =
+    oldValue.trim() === "[]" || oldValue.trim() === "{}" ? "" : oldValue;
   if (strategy === "merge_kv") {
-    return mergeKv(oldValue, newValue);
+    return mergeKv(normalizedOld, newValue);
   }
   if (strategy === "merge_text" || strategy === "skip_if_empty") {
-    return mergeText(oldValue, newValue);
+    return mergeText(normalizedOld, newValue);
   }
   return newValue;
 }
@@ -61,11 +63,9 @@ export async function buildPreviewDiffs(
   const preview: PreviewRowDiff[] = [];
   const nextDrafts: ProductDraft[] = [];
 
-  // Cap baseline lookups for fast preview generation (preview only displays top 15 rows)
   const baselineHandles = drafts
     .filter((draft) => draft.errors.length === 0)
-    .map((draft) => draft.handle)
-    .slice(0, 50);
+    .map((draft) => draft.handle);
   const baselines = await prefetchBaselines(shop, baselineHandles);
 
   for (const draft of drafts) {
@@ -130,12 +130,12 @@ export async function buildPreviewDiffs(
             : undefined,
         price:
           workingDraft.variants[0]?.price &&
-          workingDraft.variants[0].price !== baseline.price
+            workingDraft.variants[0].price !== baseline.price
             ? { old: baseline.price, new: workingDraft.variants[0].price }
             : undefined,
         template_suffix:
           workingDraft.template_suffix &&
-          workingDraft.template_suffix !== baseline.template_suffix
+            workingDraft.template_suffix !== baseline.template_suffix
             ? { old: baseline.template_suffix, new: workingDraft.template_suffix }
             : undefined,
         metafieldChanges: metafieldDiffs.length,

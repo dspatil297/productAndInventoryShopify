@@ -1,7 +1,8 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, withDbRetry } from "@/lib/db/prisma";
 import {
   buildDefaultImportSystemPrompt,
+  isLegacySystemPrompt,
   mergeSystemPromptIntoSettings,
   readImportSystemPromptFromSettings,
 } from "@/lib/import/system-prompt";
@@ -28,40 +29,51 @@ export async function upsertImportPromptPackForShop(
   definitions: MetafieldDefinitionNode[],
 ): Promise<ImportPromptPack> {
   const pack = buildImportPromptPack(definitions);
-  const existing = await prisma.shopConfig.findUnique({
-    where: { shopId },
-    select: { settings: true },
-  });
+  const existing = await withDbRetry(() =>
+    prisma.shopConfig.findUnique({
+      where: { shopId },
+      select: { settings: true },
+    }),
+  );
   const settings = readSettingsRecord(existing?.settings);
   let nextSettings = mergeImportPromptPackIntoSettings(settings, pack);
-  if (!readImportSystemPromptFromSettings(nextSettings as Prisma.JsonValue)) {
+  const existingPrompt = readImportSystemPromptFromSettings(
+    nextSettings as Prisma.JsonValue,
+  );
+  if (isLegacySystemPrompt(existingPrompt)) {
     nextSettings = mergeSystemPromptIntoSettings(
       nextSettings,
       buildDefaultImportSystemPrompt(pack),
     );
   }
 
-  await prisma.shopConfig.upsert({
-    where: { shopId },
-    create: {
-      shopId,
-      settings: nextSettings as Prisma.InputJsonValue,
-    },
-    update: {
-      settings: nextSettings as Prisma.InputJsonValue,
-    },
-  });
+  await withDbRetry(() =>
+    prisma.shopConfig.upsert({
+      where: { shopId },
+      create: {
+        shopId,
+        settings: nextSettings as Prisma.InputJsonValue,
+      },
+      update: {
+        settings: nextSettings as Prisma.InputJsonValue,
+      },
+    }),
+  );
 
-  const shopRecord = await prisma.shop.findUnique({
-    where: { id: shopId },
-  });
+  const shopRecord = await withDbRetry(() =>
+    prisma.shop.findUnique({
+      where: { id: shopId },
+    }),
+  );
   if (shopRecord) {
     await upsertStoreProfileForShop({
       shopId,
       shopDomain: shopRecord.shopDomain,
       definitions,
       shop: shopRecord,
-      systemPrompt: readImportSystemPromptFromSettings(nextSettings as Prisma.JsonValue) ?? undefined,
+      systemPrompt:
+        readImportSystemPromptFromSettings(nextSettings as Prisma.JsonValue) ??
+        undefined,
     });
   }
 
