@@ -368,15 +368,109 @@ export async function suggestMappingConfigWithAi(input: {
     throw new AiImportMapError("AI mapping returned invalid JSON");
   }
 
+const VALID_TARGETS = new Set([
+  "title",
+  "body_html",
+  "handle",
+  "template_suffix",
+  "variant.price",
+  "variant.compare_at_price",
+  "variant.sku",
+  "tags",
+  "metafield",
+  "ignore",
+]);
+
+const TARGET_ALIASES: Record<string, string> = {
+  description: "body_html",
+  body: "body_html",
+  price: "variant.price",
+  compare_at_price: "variant.compare_at_price",
+  sku: "variant.sku",
+  template: "template_suffix",
+};
+
+const VALID_TRANSFORMS = new Set<string>(transformIds);
+const VALID_MERGE_STRATEGIES = new Set([
+  "replace",
+  "merge_kv",
+  "merge_text",
+  "skip_if_empty",
+]);
+
+function normalizeMappingEntry(val: unknown): Record<string, unknown> | null {
+  if (typeof val === "string" && val.trim()) {
+    const mapped = TARGET_ALIASES[val.trim()] ?? val.trim();
+    return {
+      target: VALID_TARGETS.has(mapped) ? mapped : "ignore",
+      transform: "identity",
+    };
+  }
+  if (!val || typeof val !== "object" || Array.isArray(val)) {
+    return null;
+  }
+  const entry = { ...(val as Record<string, unknown>) };
+  if (typeof entry.target === "string") {
+    const mapped = TARGET_ALIASES[entry.target.trim()] ?? entry.target.trim();
+    if (mapped.includes(".") && !mapped.startsWith("variant.")) {
+      const [ns, ...rest] = mapped.split(".");
+      entry.target = "metafield";
+      entry.namespace = entry.namespace ?? ns;
+      entry.key = entry.key ?? rest.join(".");
+    } else if (VALID_TARGETS.has(mapped)) {
+      entry.target = mapped;
+    } else if (
+      typeof entry.namespace === "string" &&
+      typeof entry.key === "string"
+    ) {
+      entry.target = "metafield";
+    } else {
+      entry.target = "ignore";
+    }
+  } else {
+    entry.target =
+      typeof entry.namespace === "string" && typeof entry.key === "string"
+        ? "metafield"
+        : "ignore";
+  }
+
+  if (
+    typeof entry.transform !== "string" ||
+    !VALID_TRANSFORMS.has(entry.transform)
+  ) {
+    entry.transform = "identity";
+  }
+  if (
+    typeof entry.merge_strategy !== "string" ||
+    !VALID_MERGE_STRATEGIES.has(entry.merge_strategy)
+  ) {
+    delete entry.merge_strategy;
+  }
+  return entry;
+}
+
   // Normalize common LLM output structures
   if (parsed && typeof parsed === "object") {
     const raw = parsed as Record<string, unknown>;
     if (Array.isArray(raw.column_map)) {
       const map: Record<string, unknown> = {};
       for (const item of raw.column_map) {
-        if (item && typeof item === "object" && "source" in item && typeof (item as Record<string, unknown>).source === "string") {
-          const { source, ...rest } = item as Record<string, unknown>;
-          map[source as string] = rest;
+        if (item && typeof item === "object") {
+          const obj = item as Record<string, unknown>;
+          const sourceKey =
+            (typeof obj.source === "string" && obj.source) ||
+            (typeof obj.column === "string" && obj.column) ||
+            (typeof obj.header === "string" && obj.header) ||
+            (typeof obj.source_column === "string" && obj.source_column) ||
+            "";
+          if (sourceKey) {
+            const { source: _s, column: _c, header: _h, source_column: _sc, ...rest } = obj;
+            void _s;
+            void _c;
+            void _h;
+            void _sc;
+            map[sourceKey] = rest;
+          }
         }
       }
       raw.column_map = map;
@@ -403,44 +497,52 @@ export async function suggestMappingConfigWithAi(input: {
       typeof raw.column_map === "object" &&
       !Array.isArray(raw.column_map)
     ) {
-      const targetAliases: Record<string, string> = {
-        description: "body_html",
-        body: "body_html",
-        price: "variant.price",
-        compare_at_price: "variant.compare_at_price",
-        sku: "variant.sku",
-        template: "template_suffix",
-      };
-      const validTransforms = new Set<string>(transformIds);
       const cleaned: Record<string, unknown> = {};
       for (const [col, val] of Object.entries(
         raw.column_map as Record<string, unknown>,
       )) {
-        if (val && typeof val === "object" && !Array.isArray(val)) {
-          const entry = { ...(val as Record<string, unknown>) };
-          if (typeof entry.target === "string") {
-            const mapped = targetAliases[entry.target] ?? entry.target;
-            if (mapped.includes(".") && !mapped.startsWith("variant.")) {
-              const [ns, ...rest] = mapped.split(".");
-              entry.target = "metafield";
-              entry.namespace = entry.namespace ?? ns;
-              entry.key = entry.key ?? rest.join(".");
-            } else {
-              entry.target = mapped;
-            }
-          }
-          if (
-            typeof entry.transform !== "string" ||
-            !validTransforms.has(entry.transform)
-          ) {
-            entry.transform = "identity";
-          }
+        const entry = normalizeMappingEntry(val);
+        if (entry) {
           cleaned[col] = entry;
-        } else if (typeof val === "string" && val.trim()) {
-          cleaned[col] = { target: val.trim(), transform: "identity" };
         }
       }
       raw.column_map = cleaned;
+    }
+
+    if (Array.isArray(raw.extra_mappings)) {
+      raw.extra_mappings = raw.extra_mappings
+        .map((item) => {
+          if (!item || typeof item !== "object") return null;
+          const obj = item as Record<string, unknown>;
+          if (typeof obj.source_column !== "string" || !obj.source_column) {
+            return null;
+          }
+          const normalized = normalizeMappingEntry(obj);
+          return normalized
+            ? { ...normalized, source_column: obj.source_column }
+            : null;
+        })
+        .filter(Boolean);
+    } else {
+      delete raw.extra_mappings;
+    }
+
+    if (
+      raw.handle_strategy &&
+      (typeof raw.handle_strategy !== "object" ||
+        (raw.handle_strategy as Record<string, unknown>).primary !== "slugify" ||
+        typeof (raw.handle_strategy as Record<string, unknown>).source_column !== "string")
+    ) {
+      delete raw.handle_strategy;
+    }
+    if (
+      raw.template_map &&
+      (typeof raw.template_map !== "object" || Array.isArray(raw.template_map))
+    ) {
+      delete raw.template_map;
+    }
+    if (raw.notes && !Array.isArray(raw.notes)) {
+      delete raw.notes;
     }
   }
 
