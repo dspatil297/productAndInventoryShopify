@@ -292,7 +292,7 @@ export function heuristicMappingConfig(
   };
 }
 
-const AI_MAPPING_TIMEOUT_MS = 12_000;
+const AI_MAPPING_TIMEOUT_MS = 25_000;
 
 export async function suggestMappingConfigWithAi(input: {
   table: ExcelTable;

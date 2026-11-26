@@ -73,7 +73,7 @@ export function AiImportSection({
     }
 
     const checkStatus = async () => {
-      if (Date.now() - startTime > 45 * 1000) {
+      if (Date.now() - startTime > 95 * 1000) {
         setIsGenerating(false);
         if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
         setErrorMessage("Preview generation timed out. Please click Clear and try again.");
