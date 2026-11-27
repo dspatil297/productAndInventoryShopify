@@ -66,6 +66,20 @@ export async function POST(request: Request, context: RouteContext) {
     "/merchant/import?tab=ai",
   );
   const systemPromptOverride = String(formData.get("systemPrompt") ?? "").trim();
+  let selectedMetafields: string[] | undefined;
+  const rawSelected = formData.get("selectedMetafields");
+  if (typeof rawSelected === "string" && rawSelected.trim()) {
+    try {
+      const parsed: unknown = JSON.parse(rawSelected);
+      if (Array.isArray(parsed)) {
+        selectedMetafields = parsed.filter(
+          (item): item is string => typeof item === "string" && item.includes("."),
+        );
+      }
+    } catch {
+      // ignore malformed override
+    }
+  }
 
   try {
     const shop = await requireShopApiAccess(request, shopId);
@@ -119,6 +133,7 @@ export async function POST(request: Request, context: RouteContext) {
       fileName,
       pack,
       systemPrompt: systemPromptOverride || undefined,
+      selectedMetafields,
     });
 
     if (isJson) {

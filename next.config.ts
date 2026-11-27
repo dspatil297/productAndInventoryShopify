@@ -31,13 +31,13 @@ const nextConfig: NextConfig = {
   allowedDevOrigins:
     process.env.NODE_ENV === "development"
       ? [
-          ".trycloudflare.com",
-          ".ngrok-free.app",
-          ".ngrok.io",
-          "ims.firefist.co.in",
-          ".firefist.co.in",
-          "localhost",
-        ]
+        ".trycloudflare.com",
+        ".ngrok-free.app",
+        ".ngrok.io",
+        "imstest.firefist.co.in",
+        ".firefist.co.in",
+        "localhost",
+      ]
       : appUrl
         ? [new URL(appUrl.startsWith("http") ? appUrl : `https://${appUrl}`).host]
         : [],

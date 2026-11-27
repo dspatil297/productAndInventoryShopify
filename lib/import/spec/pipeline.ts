@@ -22,6 +22,7 @@ import { buildProductDrafts } from "@/lib/import/spec/transform-engine";
 import { productImportHeaders } from "@/lib/csv/productImport";
 import { rowsToImportCsv } from "@/lib/import/import-csv-rows";
 import { readMetafieldDefinitionsFromConfig } from "@/lib/metafields/config";
+import { filterSchemaByKeys } from "@/lib/import/system-prompt";
 import type { ShopConfig } from "@/generated/prisma/client";
 
 export interface SpecPipelineResult {
@@ -40,16 +41,21 @@ export async function runSpecImportPipeline(input: {
   table: ExcelTable;
   profile: StoreProfile;
   systemPrompt?: string;
+  selectedMetafields?: string[] | null;
 }): Promise<SpecPipelineResult> {
   const definitions = readMetafieldDefinitionsFromConfig(input.shopConfig);
-  let mapping = heuristicMappingConfig(input.table, input.profile.schema);
+  const activeSchema = filterSchemaByKeys(
+    input.profile.schema,
+    input.selectedMetafields,
+  );
+  let mapping = heuristicMappingConfig(input.table, activeSchema);
   let usedAiMapping = false;
   let mappingNotes = "mapping: heuristic";
 
   try {
     mapping = await suggestMappingConfigWithAi({
       table: input.table,
-      schema: input.profile.schema,
+      schema: activeSchema,
       policy: input.profile.import_policy,
       systemPrompt: input.systemPrompt ?? input.profile.system_prompt,
     });
@@ -63,7 +69,7 @@ export async function runSpecImportPipeline(input: {
 
   const heuristicBaseline = applyArthenicColumnProfile(
     input.table,
-    heuristicMappingConfig(input.table, input.profile.schema),
+    heuristicMappingConfig(input.table, activeSchema),
   );
 
   if (usedAiMapping) {
@@ -72,6 +78,34 @@ export async function runSpecImportPipeline(input: {
     mapping = heuristicBaseline;
   }
   mapping = ensureCoreMappings(input.table, mapping);
+
+  if (input.selectedMetafields) {
+    const allowed = new Set(input.selectedMetafields);
+    const filteredColumnMap: typeof mapping.column_map = {};
+    for (const [col, entry] of Object.entries(mapping.column_map)) {
+      if (
+        entry.target !== "metafield" ||
+        (entry.namespace && entry.key && allowed.has(`${entry.namespace}.${entry.key}`))
+      ) {
+        filteredColumnMap[col] = entry;
+      }
+    }
+    mapping = {
+      ...mapping,
+      column_map: filteredColumnMap,
+      ...(mapping.extra_mappings
+        ? {
+            extra_mappings: mapping.extra_mappings.filter(
+              (entry) =>
+                entry.target !== "metafield" ||
+                (entry.namespace &&
+                  entry.key &&
+                  allowed.has(`${entry.namespace}.${entry.key}`)),
+            ),
+          }
+        : {}),
+    };
+  }
 
   const arthenicTemplate = detectArthenicTemplate(input.table.headers);
   if (arthenicTemplate && !usedAiMapping) {

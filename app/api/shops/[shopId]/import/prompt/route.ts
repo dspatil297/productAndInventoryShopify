@@ -5,8 +5,12 @@ import { readMetafieldDefinitionsFromConfig } from "@/lib/metafields/config";
 import { refreshMetafieldDefinitionsForShop } from "@/lib/metafields/refresh-definitions";
 import {
   buildDefaultImportSystemPrompt,
+  filterDefinitionsByKeys,
+  filterSchemaByKeys,
   mergeSystemPromptIntoSettings,
+  readSelectedImportMetafields,
 } from "@/lib/import/system-prompt";
+import { buildImportPromptPack } from "@/lib/import/prompt-pack";
 import {
   ensureImportPromptPack,
   readStoredImportPromptPack,
@@ -25,7 +29,15 @@ export async function POST(request: Request, context: RouteContext) {
     const body = (await request.json().catch(() => ({}))) as {
       action?: "save" | "regenerate";
       systemPrompt?: string;
+      selectedMetafields?: string[];
     };
+
+    const hasSelectedMetafields = Array.isArray(body.selectedMetafields);
+    const selectedMetafields = hasSelectedMetafields
+      ? body.selectedMetafields!.filter(
+          (item): item is string => typeof item === "string" && item.includes("."),
+        )
+      : undefined;
 
     if (body.action === "save") {
       const systemPrompt = String(body.systemPrompt ?? "").trim();
@@ -37,7 +49,12 @@ export async function POST(request: Request, context: RouteContext) {
       }
 
       await updateShopConfig(shop.id, {
-        settings: { importSystemPrompt: systemPrompt },
+        settings: {
+          importSystemPrompt: systemPrompt,
+          ...(hasSelectedMetafields
+            ? { selectedImportMetafields: selectedMetafields }
+            : {}),
+        },
       });
 
       const refreshed = await getShopWithConfig(shop.id);
@@ -55,7 +72,7 @@ export async function POST(request: Request, context: RouteContext) {
         });
       }
 
-      return NextResponse.json({ ok: true, systemPrompt });
+      return NextResponse.json({ ok: true, systemPrompt, selectedMetafields });
     }
 
     if (body.action === "regenerate") {
@@ -63,18 +80,29 @@ export async function POST(request: Request, context: RouteContext) {
       const refreshed = await getShopWithConfig(shop.id);
       const defList = readMetafieldDefinitionsFromConfig(refreshed?.config);
       const storedPack = readStoredImportPromptPack(refreshed?.config?.settings);
-      const pack = await ensureImportPromptPack(shop.id, defList, storedPack);
-      if (!pack) {
+      const fullPack = await ensureImportPromptPack(shop.id, defList, storedPack);
+      if (!fullPack) {
         return NextResponse.json(
           { error: "Could not build prompt pack from definitions" },
           { status: 400 },
         );
       }
 
+      const activeSelected =
+        selectedMetafields ??
+        readSelectedImportMetafields(refreshed?.config?.settings);
+      const filteredDefs = filterDefinitionsByKeys(defList, activeSelected);
+      const filteredPack = activeSelected
+        ? buildImportPromptPack(filteredDefs)
+        : fullPack;
+
       const existingProfile = readStoreProfile(refreshed?.config?.settings);
+      const filteredSchema = existingProfile?.schema
+        ? filterSchemaByKeys(existingProfile.schema, activeSelected)
+        : undefined;
       const systemPrompt = buildDefaultImportSystemPrompt(
-        pack,
-        existingProfile?.schema,
+        filteredPack,
+        filteredSchema,
         existingProfile?.import_policy,
       );
       const currentSettings =
@@ -85,7 +113,12 @@ export async function POST(request: Request, context: RouteContext) {
           : {};
 
       await updateShopConfig(shop.id, {
-        settings: mergeSystemPromptIntoSettings(currentSettings, systemPrompt),
+        settings: {
+          ...mergeSystemPromptIntoSettings(currentSettings, systemPrompt),
+          ...(hasSelectedMetafields
+            ? { selectedImportMetafields: selectedMetafields }
+            : {}),
+        },
       });
 
       await upsertStoreProfileForShop({
@@ -101,7 +134,8 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({
         ok: true,
         systemPrompt,
-        packVersion: pack.version,
+        packVersion: fullPack.version,
+        selectedMetafields: activeSelected ?? undefined,
       });
     }
 

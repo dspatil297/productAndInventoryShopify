@@ -8,9 +8,13 @@ import { getExcelMapJob } from "@/lib/import/excel-map-jobs";
 import { readStoreProfile } from "@/lib/import/spec/store-profile";
 import {
   buildDefaultImportSystemPrompt,
+  filterDefinitionsByKeys,
+  filterSchemaByKeys,
   isLegacySystemPrompt,
   readImportSystemPromptFromSettings,
+  readSelectedImportMetafields,
 } from "@/lib/import/system-prompt";
+import { buildImportPromptPack } from "@/lib/import/prompt-pack";
 import {
   ensureImportPromptPack,
   readStoredImportPromptPack,
@@ -49,6 +53,9 @@ export default async function MerchantImportPage({
     promptPack = await ensureImportPromptPack(shop.id, definitions, promptPack);
   }
 
+  const selectedMetafields = readSelectedImportMetafields(
+    shopWithConfig?.config?.settings,
+  );
   const storeProfile = readStoreProfile(shopWithConfig?.config?.settings);
   let systemPrompt: string | undefined = storeProfile?.system_prompt;
   if (isLegacySystemPrompt(systemPrompt)) {
@@ -60,9 +67,15 @@ export default async function MerchantImportPage({
       : (savedPrompt ?? undefined);
   }
   if (!systemPrompt && promptPack) {
+    const filteredPack = selectedMetafields
+      ? buildImportPromptPack(filterDefinitionsByKeys(definitions, selectedMetafields))
+      : promptPack;
+    const filteredSchema = storeProfile?.schema
+      ? filterSchemaByKeys(storeProfile.schema, selectedMetafields)
+      : undefined;
     systemPrompt = buildDefaultImportSystemPrompt(
-      promptPack,
-      storeProfile?.schema,
+      filteredPack,
+      filteredSchema,
       storeProfile?.import_policy,
     );
   }
@@ -79,6 +92,7 @@ export default async function MerchantImportPage({
       shopName={shop.shopName}
       metafieldColumnCount={metafieldColumnCount}
       definitions={definitions}
+      selectedMetafields={selectedMetafields}
       systemPrompt={systemPrompt}
       promptPackVersion={promptPack?.version ?? null}
       promptPackBuiltAt={promptPack?.builtAt ?? null}

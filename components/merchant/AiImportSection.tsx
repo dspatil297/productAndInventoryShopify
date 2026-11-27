@@ -12,9 +12,13 @@ import {
   Upload,
 } from "lucide-react";
 import type { ExcelMapJobPublic } from "@/lib/import/excel-map-jobs";
+import { isUnsupportedMetafieldType } from "@/lib/metafields/validators";
+import type { MetafieldDefinitionNode } from "@/types/shopify";
 
 interface AiImportSectionProps {
   shopId: string;
+  definitions?: MetafieldDefinitionNode[];
+  selectedMetafields?: string[] | null;
   systemPrompt: string;
   promptPackVersion?: string | null;
   jobId?: string | null;
@@ -27,11 +31,24 @@ function isJobRunning(status: ExcelMapJobPublic["status"] | undefined): boolean 
 
 export function AiImportSection({
   shopId,
+  definitions = [],
+  selectedMetafields: initialSelectedMetafields,
   systemPrompt: initialSystemPrompt,
   promptPackVersion: initialPackVersion,
   jobId: initialJobId,
   initialJob,
 }: AiImportSectionProps) {
+  const supportedDefinitions = definitions.filter(
+    (def) => !isUnsupportedMetafieldType(def.type.name),
+  );
+  const allMetafieldKeys = supportedDefinitions.map(
+    (def) => `${def.namespace}.${def.key}`,
+  );
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(() =>
+    initialSelectedMetafields && initialSelectedMetafields.length > 0
+      ? initialSelectedMetafields
+      : allMetafieldKeys,
+  );
   const [prompt, setPrompt] = useState(initialSystemPrompt);
   const [packVersion, setPackVersion] = useState(initialPackVersion);
 
@@ -188,7 +205,13 @@ export function AiImportSection({
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save", systemPrompt: prompt }),
+        body: JSON.stringify({
+          action: "save",
+          systemPrompt: prompt,
+          ...(supportedDefinitions.length > 0
+            ? { selectedMetafields: selectedKeys }
+            : {}),
+        }),
       });
       const data = await response.json().catch(() => ({}));
 
@@ -221,7 +244,12 @@ export function AiImportSection({
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "regenerate" }),
+        body: JSON.stringify({
+          action: "regenerate",
+          ...(supportedDefinitions.length > 0
+            ? { selectedMetafields: selectedKeys }
+            : {}),
+        }),
       });
       const data = await response.json().catch(() => ({}));
 
@@ -290,6 +318,9 @@ export function AiImportSection({
     const formData = new FormData();
     formData.append("file", fileToUpload);
     formData.append("systemPrompt", prompt);
+    if (supportedDefinitions.length > 0) {
+      formData.append("selectedMetafields", JSON.stringify(selectedKeys));
+    }
 
     try {
       const response = await fetch(`/api/shops/${shopId}/import/excel-map`, {
@@ -434,9 +465,80 @@ export function AiImportSection({
           ) : null}
         </div>
         <p className="text-xs text-muted-foreground">
-          Generated from this store&apos;s metafield definitions. AI uses this to
-          map your Excel columns to Shopify fields.
+          Choose which store metafields AI should fill, then click{" "}
+          <strong>Regenerate from store schema</strong> to tailor the system prompt.
         </p>
+        {supportedDefinitions.length > 0 ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-medium">
+                Target metafields ({selectedKeys.length} of {supportedDefinitions.length})
+              </span>
+              <div className="flex items-center gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSelectedKeys(allMetafieldKeys)}
+                  className="text-primary hover:underline cursor-pointer"
+                >
+                  All
+                </button>
+                <span className="text-muted-foreground">·</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedKeys(
+                      allMetafieldKeys.filter((k) => k.startsWith("custom.")),
+                    )
+                  }
+                  className="text-primary hover:underline cursor-pointer"
+                >
+                  Custom only
+                </button>
+                <span className="text-muted-foreground">·</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedKeys([])}
+                  className="text-muted-foreground hover:underline cursor-pointer"
+                >
+                  None
+                </button>
+              </div>
+            </div>
+            <div className="grid max-h-44 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2">
+              {supportedDefinitions.map((def) => {
+                const fullKey = `${def.namespace}.${def.key}`;
+                const checked = selectedKeys.includes(fullKey);
+                return (
+                  <label
+                    key={def.id}
+                    className="flex items-start gap-2 rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs cursor-pointer hover:bg-muted/30"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        setSelectedKeys((prev) =>
+                          e.target.checked
+                            ? [...prev, fullKey]
+                            : prev.filter((k) => k !== fullKey),
+                        );
+                      }}
+                      className="mt-0.5 accent-primary cursor-pointer"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">
+                        {def.name}
+                      </span>
+                      <span className="block truncate font-mono text-[11px] text-muted-foreground">
+                        {fullKey} ({def.type.name})
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
         <div className="flex flex-col gap-3">
           <textarea
             name="systemPrompt"
@@ -524,6 +626,13 @@ export function AiImportSection({
         >
           <input type="hidden" name="returnTo" value="/merchant/import?tab=ai" />
           <input type="hidden" name="systemPrompt" value={prompt} />
+          {supportedDefinitions.length > 0 ? (
+            <input
+              type="hidden"
+              name="selectedMetafields"
+              value={JSON.stringify(selectedKeys)}
+            />
+          ) : null}
 
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="text-xs font-medium text-muted-foreground">Spreadsheet file (.xlsx, .xls, .csv)</span>

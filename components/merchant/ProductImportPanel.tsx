@@ -20,6 +20,7 @@ interface ProductImportPanelProps {
   shopName: string;
   metafieldColumnCount: number;
   definitions: MetafieldDefinitionNode[];
+  selectedMetafields?: string[] | null;
   systemPrompt: string;
   promptPackVersion?: string | null;
   promptPackBuiltAt?: string | null;
@@ -47,6 +48,7 @@ export function ProductImportPanel({
   shopId,
   shopName,
   definitions,
+  selectedMetafields,
   systemPrompt,
   promptPackVersion: initialPackVersion,
   promptPackBuiltAt: _promptPackBuiltAt,
@@ -249,6 +251,8 @@ export function ProductImportPanel({
         <div className={activeTab === "ai" ? "block" : "hidden"}>
           <AiImportSection
             shopId={shopId}
+            definitions={definitions}
+            selectedMetafields={selectedMetafields}
             systemPrompt={systemPrompt}
             promptPackVersion={packVersion}
             jobId={jobId}

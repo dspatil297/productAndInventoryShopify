@@ -164,7 +164,12 @@ export function impactNote(value: unknown, policy: ImportPolicy): string {
   if (parts.length >= 3) {
     return parts[parts.length - 1] ?? "";
   }
-  return "";
+  // Single paragraph starting with "60% ... . <narrative>" (e.g. Decor Artisan Impact)
+  const strippedLead = text
+    .replace(/^\d{1,3}\s*%[^.!?]*[.!?]\s*/, "")
+    .replace(/^\d{1,2}(?:-\d{1,2})?\s*days?[^.!?]*[.!?]\s*/i, "")
+    .trim();
+  return strippedLead.length > 40 ? strippedLead : "";
 }
 
 function parseRunonFaqPairs(block: string): string[] {

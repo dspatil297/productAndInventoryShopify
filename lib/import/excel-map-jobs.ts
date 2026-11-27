@@ -15,6 +15,7 @@ import {
   runSpecImportPipeline,
 } from "@/lib/import/spec/pipeline";
 import { readStoreProfile } from "@/lib/import/spec/store-profile";
+import { readSelectedImportMetafields } from "@/lib/import/system-prompt";
 import type { ImportReport, ProductDraft } from "@/lib/import/spec/types";
 import { upsertStoreProfileForShop } from "@/lib/import/spec/store-profile";
 import { readMetafieldDefinitionsFromConfig } from "@/lib/metafields/config";
@@ -50,6 +51,7 @@ interface ExcelMapJobRecord {
   fileName: string;
   pack: ImportPromptPack;
   systemPrompt?: string;
+  selectedMetafields?: string[];
   status: ExcelMapJobStatus;
   createdAt: number;
   error?: string;
@@ -127,6 +129,7 @@ export function startExcelMapJob(input: {
   fileName: string;
   pack: ImportPromptPack;
   systemPrompt?: string;
+  selectedMetafields?: string[];
 }): string {
   const id = randomUUID();
   jobs.set(id, {
@@ -136,6 +139,7 @@ export function startExcelMapJob(input: {
     fileName: input.fileName,
     pack: input.pack,
     systemPrompt: input.systemPrompt,
+    selectedMetafields: input.selectedMetafields,
     status: "queued",
     createdAt: Date.now(),
   });
@@ -209,6 +213,8 @@ async function runExcelMapPreviewWork(job: ExcelMapJobRecord): Promise<void> {
     }
 
     const table = parseExcelBuffer(job.buffer);
+    const selectedMetafields =
+      job.selectedMetafields ?? readSelectedImportMetafields(shop.config?.settings);
     const pipeline = await runSpecImportPipeline({
       shop,
       shopConfig: shop.config,
@@ -218,6 +224,7 @@ async function runExcelMapPreviewWork(job: ExcelMapJobRecord): Promise<void> {
         system_prompt: job.systemPrompt ?? profile.system_prompt,
       },
       systemPrompt: job.systemPrompt,
+      selectedMetafields,
     });
 
     job.mappingNotes = pipeline.mappingNotes;

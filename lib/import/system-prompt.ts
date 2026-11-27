@@ -2,8 +2,50 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { ImportPromptPack } from "@/lib/import/prompt-pack";
 import { DEFAULT_IMPORT_POLICY } from "@/lib/import/spec/import-policy";
 import type { ImportPolicy, StoreSchema } from "@/lib/import/spec/types";
+import type { MetafieldDefinitionNode } from "@/types/shopify";
 
 const SETTINGS_KEY = "importSystemPrompt";
+const SELECTED_METAFIELDS_KEY = "selectedImportMetafields";
+
+export function readSelectedImportMetafields(
+  settings: Prisma.JsonValue | null | undefined,
+): string[] | null {
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+    return null;
+  }
+  const value = (settings as Record<string, unknown>)[SELECTED_METAFIELDS_KEY];
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  return value.filter((item): item is string => typeof item === "string" && item.includes("."));
+}
+
+export function filterDefinitionsByKeys(
+  definitions: MetafieldDefinitionNode[],
+  selectedKeys: string[] | null | undefined,
+): MetafieldDefinitionNode[] {
+  if (!selectedKeys) {
+    return definitions;
+  }
+  const allowed = new Set(selectedKeys);
+  return definitions.filter((def) => allowed.has(`${def.namespace}.${def.key}`));
+}
+
+export function filterSchemaByKeys(
+  schema: StoreSchema,
+  selectedKeys: string[] | null | undefined,
+): StoreSchema {
+  if (!selectedKeys) {
+    return schema;
+  }
+  const allowed = new Set(selectedKeys);
+  return {
+    ...schema,
+    metafields: schema.metafields.filter((field) =>
+      allowed.has(`${field.namespace}.${field.key}`),
+    ),
+  };
+}
 
 export function isLegacySystemPrompt(prompt: string | null | undefined): boolean {
   if (!prompt || !prompt.trim()) {
@@ -50,6 +92,68 @@ export function buildDefaultImportSystemPrompt(
             return `- ${nsKey} (${field.type ?? "unknown"}): ${field.label}. Format: ${field.hint}`;
           });
 
+  const activeKeys = new Set(
+    schema && schema.metafields.length > 0
+      ? schema.metafields.map((f) => `${f.namespace}.${f.key}`)
+      : pack.fields
+          .filter((f) => f.kind === "metafield" && f.namespace && f.key)
+          .map((f) => `${f.namespace}.${f.key}`),
+  );
+  const hasKey = (fullKey: string) => activeKeys.size === 0 || activeKeys.has(fullKey);
+  const hasPrefix = (prefix: string) =>
+    activeKeys.size === 0 || [...activeKeys].some((k) => k.startsWith(prefix));
+
+  const dynamicRules: string[] = [];
+  if (hasKey("custom.product_details")) {
+    dynamicRules.push(
+      `5. Accordion detail columns (Material, Fabric, Color, Jewellery Type, Base Material, Stones, Weight, Finish, Craft Tradition, Tradition, Region, Medium, etc.) -> map each non-empty attribute column to custom.product_details with transform "kv_column", transform_params { "kv_label": "<Display Label>" }, and merge_strategy "merge_kv". Skip empty summary columns like an empty "Product Details" column.`,
+    );
+  }
+  if (hasPrefix("custom.filter_")) {
+    dynamicRules.push(
+      `6. Multi-target columns: when a column populates BOTH a detail metafield and a collection filter (custom.filter_*), put the primary mapping in column_map and the additional mapping(s) in extra_mappings with source_column.`,
+    );
+  }
+  const listHints: string[] = [];
+  if (hasKey("custom.product_whats_included") || hasKey("custom.product_care_instructions")) {
+    listHints.push(`   - Whats Included / Care Instructions (newline or "•" bulleted) -> transform "lines_to_list"`);
+  }
+  if (hasKey("custom.filter_occasion")) {
+    listHints.push(`   - custom.filter_occasion (comma-separated values) -> transform "comma_to_list"`);
+  }
+  if (hasKey("custom.product_measurements")) {
+    listHints.push(`   - Dimensions & Scale / Canvas Size -> custom.product_measurements with transform "dimensions_block"`);
+  }
+  if (hasKey("custom.product_faq")) {
+    listHints.push(`   - FAQs / FAQ 1..FAQ 6 -> custom.product_faq with transform "faq_columns"`);
+  }
+  if (hasKey("custom.product_impact_stats")) {
+    listHints.push(
+      hasKey("custom.product_impact_note")
+        ? `   - Artisan Impact / Artisans Impact -> custom.product_impact_stats with transform "impact_stats", PLUS extra_mappings to custom.product_impact_note with transform "impact_note"`
+        : `   - Artisan Impact / Artisans Impact -> custom.product_impact_stats with transform "impact_stats"`,
+    );
+  }
+  if (listHints.length > 0) {
+    dynamicRules.push(`7. List metafields:\n${listHints.join("\n")}`);
+  }
+  const storyHints: string[] = [];
+  if (hasKey("custom.product_maker_story")) {
+    storyHints.push(`   - The Maker / The Weaver / The Curation Story / Artist -> custom.product_maker_story with "story_maker_json"`);
+  }
+  if (hasKey("custom.product_process_story")) {
+    storyHints.push(`   - How its Made / The Making / How It's Made -> custom.product_process_story with "story_process_json"`);
+  }
+  if (hasKey("custom.product_heritage_story")) {
+    storyHints.push(`   - Artistry Behind / THE FABRIC / The Tradition / Understanding the Painting -> custom.product_heritage_story with "story_heritage_json"`);
+  }
+  if (hasKey("custom.pdp_styling_story")) {
+    storyHints.push(`   - Application and Styling -> custom.pdp_styling_story with "story_styling_json"`);
+  }
+  if (storyHints.length > 0) {
+    dynamicRules.push(`8. Story JSON metafields:\n${storyHints.join("\n")}`);
+  }
+
   return `You are a Shopify catalog mapping assistant for this store.
 
 Given:
@@ -88,27 +192,15 @@ Rules:
 2. title is required — map from Product Name, Painting Title, or closest title column.
 3. body_html: map description/one-liner column using transform "html_paragraphs".
 4. variant.price: map Price/MRP using transform "sale_from_list" with transform_params { "multiplier": ${policy.sale_price_multiplier ?? 0.95} } (sets both price and compare_at_price).
-5. Accordion detail columns (Material, Fabric, Color, Jewellery Type, Base Material, Stones, Weight, Finish, Craft Tradition, Tradition, Region, Medium, etc.) -> map each non-empty attribute column to custom.product_details with transform "kv_column", transform_params { "kv_label": "<Display Label>" }, and merge_strategy "merge_kv". Skip empty summary columns like an empty "Product Details" column.
-6. Multi-target columns: when a column populates BOTH custom.product_details (via kv_column) AND a collection filter (custom.filter_*), put the primary mapping in column_map and the additional mapping(s) in extra_mappings with source_column.
-7. List metafields:
-   - Whats Included / Care Instructions (newline or "•" bulleted) -> transform "lines_to_list"
-   - custom.filter_occasion (comma-separated values) -> transform "comma_to_list"
-   - Dimensions & Scale / Canvas Size -> custom.product_measurements with transform "dimensions_block" (and highlight/note via extra_mappings if applicable)
-   - FAQs / FAQ 1..FAQ 6 -> custom.product_faq with transform "faq_columns"
-   - Artisan Impact / Artisans Impact -> custom.product_impact_stats with transform "impact_stats", PLUS extra_mappings to custom.product_impact_note with transform "impact_note"
-8. Story JSON metafields (namespace "custom"):
-   - The Maker / The Weaver / The Curation Story / Artist -> custom.product_maker_story with "story_maker_json"
-   - How its Made / The Making / How It's Made -> custom.product_process_story with "story_process_json"
-   - Artistry Behind / THE FABRIC / The Tradition / Understanding the Painting -> custom.product_heritage_story with "story_heritage_json"
-   - Application and Styling -> custom.pdp_styling_story with "story_styling_json"
-9. For metafields, namespace.key MUST exist in store_schema below. Do not map to frozen fields (${policy.frozen_fields.slice(0, 6).join(", ")}).
+${dynamicRules.join("\n")}
+9. ONLY map metafields listed in "Store metafield schema" below. Do not invent or map to unselected metafields or frozen fields (${policy.frozen_fields.slice(0, 6).join(", ")}).
 10. Never invent data not present in source columns; ignore unmapped shipping/meta columns.
 
 Core product fields:
 ${baseFields.join("\n")}
 
-Store metafield schema:
-${metafieldLines.join("\n")}
+Store metafield schema (${metafieldLines.length} selected):
+${metafieldLines.length > 0 ? metafieldLines.join("\n") : "- (no metafields selected)"}
 
 Import policy:
 ${JSON.stringify(policy, null, 2)}`;
