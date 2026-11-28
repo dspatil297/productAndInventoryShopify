@@ -23,6 +23,9 @@ export interface ExcelImportPreviewRow {
   metafieldCount: number;
   warnings: string[];
   action?: string;
+  suggestedHandle?: string;
+  conflictReason?: string;
+  existingTitle?: string;
 }
 
 export interface ExcelImportPipelineResult {

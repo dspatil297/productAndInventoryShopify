@@ -11,7 +11,10 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
-import type { ExcelMapJobPublic } from "@/lib/import/excel-map-jobs";
+import type {
+  ExcelMapJobPublic,
+  ImportRowOverride,
+} from "@/lib/import/excel-map-jobs";
 import { isUnsupportedMetafieldType } from "@/lib/metafields/validators";
 import type { MetafieldDefinitionNode } from "@/types/shopify";
 
@@ -77,6 +80,10 @@ export function AiImportSection({
   const [importSuccess, setImportSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [rowOverrides, setRowOverrides] = useState<
+    Record<number, { handle: string; action?: "create" | "update" | "skip" }>
+  >({});
+  const [editingHandleIndex, setEditingHandleIndex] = useState<number | null>(null);
 
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -304,6 +311,8 @@ export function AiImportSection({
     setIsGenerating(true);
     setImportSuccess(false);
     setErrorMessage(null);
+    setRowOverrides({});
+    setEditingHandleIndex(null);
     setProgressPercent(15);
     setProgressStage("Uploading Excel spreadsheet…");
     setElapsedSeconds(0);
@@ -381,17 +390,25 @@ export function AiImportSection({
     setErrorMessage(null);
 
     try {
+      const overridesList: ImportRowOverride[] = Object.entries(rowOverrides).map(
+        ([idx, entry]) => ({
+          index: Number(idx),
+          handle: entry.handle,
+          ...(entry.action ? { action: entry.action } : {}),
+        }),
+      );
       const response = await fetch(
         `/api/shops/${shopId}/import/excel-map/jobs/${activeJobId}/confirm`,
         {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            resume && job?.resumeFromHandle
+          body: JSON.stringify({
+            ...(resume && job?.resumeFromHandle
               ? { resumeFromHandle: job.resumeFromHandle }
-              : {},
-          ),
+              : {}),
+            ...(overridesList.length > 0 ? { rowOverrides: overridesList } : {}),
+          }),
         },
       );
 
@@ -436,10 +453,31 @@ export function AiImportSection({
   };
 
   const previewReady = job?.status === "preview_ready";
-  const errorCount =
+  const flaggedRows = (job?.previewRows ?? []).filter((row) =>
+    Boolean(row.conflictReason && !rowOverrides[row.index]),
+  );
+  const resolvedErrorRows = new Set(
+    (job?.previewRows ?? [])
+      .filter((row) => row.action === "error" && Boolean(rowOverrides[row.index]?.handle))
+      .map((row) => row.index),
+  );
+  const rawErrorCount =
     job?.previewSummary?.error ??
     job?.previewRows?.filter((row) => row.action === "error").length ??
     0;
+  const errorCount = Math.max(0, rawErrorCount - resolvedErrorRows.size);
+
+  const handleApproveAllSuggested = () => {
+    const next: Record<number, { handle: string; action?: "create" | "update" | "skip" }> = {
+      ...rowOverrides,
+    };
+    for (const row of job?.previewRows ?? []) {
+      if (row.suggestedHandle && !next[row.index]) {
+        next[row.index] = { handle: row.suggestedHandle, action: "create" };
+      }
+    }
+    setRowOverrides(next);
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -761,6 +799,22 @@ export function AiImportSection({
             </p>
           ) : null}
 
+          {flaggedRows.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+              <span>
+                ⚠️ {flaggedRows.length} row(s) flagged with handle conflicts. Approve
+                suggested handles or edit handles below before importing.
+              </span>
+              <button
+                type="button"
+                onClick={handleApproveAllSuggested}
+                className="rounded-md bg-amber-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-700 cursor-pointer"
+              >
+                Approve all suggested
+              </button>
+            </div>
+          ) : null}
+
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-[32rem] text-left text-xs">
               <thead className="border-b border-border bg-muted/40">
@@ -776,24 +830,127 @@ export function AiImportSection({
                 </tr>
               </thead>
               <tbody>
-                {(job.previewRows ?? []).map((row) => (
-                  <tr key={row.index} className="border-b border-border last:border-0 hover:bg-muted/20">
-                    <td className="px-3 py-2 capitalize font-medium">{row.action ?? "—"}</td>
-                    <td className="px-3 py-2 font-mono text-muted-foreground">{row.index}</td>
-                    <td className="max-w-[12rem] truncate px-3 py-2 font-medium">
-                      {row.title || "—"}
-                    </td>
-                    <td className="max-w-[10rem] truncate px-3 py-2 text-muted-foreground font-mono">
-                      {row.handle || "—"}
-                    </td>
-                    <td className="px-3 py-2">{row.price || "—"}</td>
-                    <td className="px-3 py-2">{row.template_suffix || "—"}</td>
-                    <td className="px-3 py-2 font-mono">{row.metafieldCount}</td>
-                    <td className="px-3 py-2 text-amber-700 dark:text-amber-400">
-                      {row.warnings.join(", ") || "—"}
-                    </td>
-                  </tr>
-                ))}
+                {(job.previewRows ?? []).map((row) => {
+                  const override = rowOverrides[row.index];
+                  const effectiveAction = override?.action ?? row.action ?? "—";
+                  const effectiveHandle = override?.handle ?? row.handle;
+                  const isFlagged = Boolean(row.conflictReason && !override);
+                  const isEditing =
+                    editingHandleIndex === row.index || Boolean(row.conflictReason);
+
+                  return (
+                    <tr
+                      key={row.index}
+                      className={`border-b border-border last:border-0 hover:bg-muted/20 ${
+                        isFlagged ? "bg-amber-500/5" : ""
+                      }`}
+                    >
+                      <td className="px-3 py-2 capitalize font-medium">
+                        {row.conflictReason || override ? (
+                          <select
+                            value={effectiveAction}
+                            onChange={(e) => {
+                              const action = e.target.value as
+                                | "create"
+                                | "update"
+                                | "skip";
+                              setRowOverrides((prev) => ({
+                                ...prev,
+                                [row.index]: {
+                                  handle:
+                                    action === "create" &&
+                                    effectiveHandle === row.handle &&
+                                    row.suggestedHandle
+                                      ? row.suggestedHandle
+                                      : effectiveHandle,
+                                  action,
+                                },
+                              }));
+                            }}
+                            className="rounded border border-input bg-background px-1.5 py-0.5 text-xs capitalize"
+                          >
+                            <option value="create">create</option>
+                            {row.action === "update" ? (
+                              <option value="update">update</option>
+                            ) : null}
+                            <option value="skip">skip</option>
+                          </select>
+                        ) : (
+                          effectiveAction
+                        )}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-muted-foreground">
+                        {row.index}
+                      </td>
+                      <td className="max-w-[12rem] truncate px-3 py-2 font-medium">
+                        {row.title || "—"}
+                      </td>
+                      <td className="px-3 py-2 font-mono">
+                        <div className="flex flex-col gap-1">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={effectiveHandle}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setRowOverrides((prev) => ({
+                                  ...prev,
+                                  [row.index]: {
+                                    handle: val,
+                                    action:
+                                      val !== row.handle
+                                        ? "create"
+                                        : prev[row.index]?.action,
+                                  },
+                                }));
+                              }}
+                              className="w-44 rounded border border-input bg-background px-2 py-0.5 text-xs font-mono"
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setEditingHandleIndex(row.index)}
+                              title="Click to edit handle"
+                              className="max-w-[10rem] truncate text-left text-muted-foreground hover:text-foreground cursor-pointer"
+                            >
+                              {effectiveHandle || "—"}
+                            </button>
+                          )}
+                          {row.suggestedHandle &&
+                          effectiveHandle !== row.suggestedHandle ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setRowOverrides((prev) => ({
+                                  ...prev,
+                                  [row.index]: {
+                                    handle: row.suggestedHandle!,
+                                    action: "create",
+                                  },
+                                }))
+                              }
+                              className="w-fit rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-500/25 cursor-pointer"
+                            >
+                              Approve: {row.suggestedHandle}
+                            </button>
+                          ) : override ? (
+                            <span className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                              ✓ Approved ({effectiveAction})
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">{row.price || "—"}</td>
+                      <td className="px-3 py-2">{row.template_suffix || "—"}</td>
+                      <td className="px-3 py-2 font-mono">{row.metafieldCount}</td>
+                      <td className="px-3 py-2 text-amber-700 dark:text-amber-400">
+                        {override
+                          ? `Using "${effectiveHandle}"`
+                          : row.conflictReason || row.warnings.join(", ") || "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

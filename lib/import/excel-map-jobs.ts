@@ -250,10 +250,52 @@ async function runExcelMapPreviewWork(job: ExcelMapJobRecord): Promise<void> {
   }
 }
 
+export interface ImportRowOverride {
+  index: number;
+  handle: string;
+  action?: "create" | "update" | "skip";
+}
+
+function applyRowOverridesToDrafts(
+  drafts: ProductDraft[],
+  overrides: ImportRowOverride[] | undefined,
+): ProductDraft[] {
+  if (!overrides || overrides.length === 0) {
+    return drafts;
+  }
+  const byIndex = new Map(overrides.map((o) => [o.index, o]));
+  return drafts.map((draft, idx) => {
+    const override = byIndex.get(idx + 1);
+    if (!override) {
+      return draft;
+    }
+    const cleanHandle = override.handle
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const nextHandle = cleanHandle || draft.handle;
+    const handleChanged = nextHandle !== draft.handle;
+    const nextAction =
+      override.action ?? (handleChanged ? "create" : draft.action);
+    const isCreate = nextAction === "create";
+    return {
+      ...draft,
+      handle: nextHandle,
+      action: nextAction,
+      productId: isCreate ? undefined : draft.productId,
+      variantId: isCreate ? undefined : draft.variantId,
+      errors: handleChanged
+        ? draft.errors.filter((e) => e !== "HANDLE_EXISTS" && e !== "HANDLE_REQUIRED")
+        : draft.errors,
+    };
+  });
+}
+
 export async function confirmExcelMapImport(
   jobId: string,
   shopId: string,
-  options?: { resumeFromHandle?: string },
+  options?: { resumeFromHandle?: string; rowOverrides?: ImportRowOverride[] },
 ): Promise<ExcelMapJobPublic> {
   let job = jobs.get(jobId);
   if (!job || job.shopId !== shopId) {
@@ -309,10 +351,16 @@ export async function confirmExcelMapImport(
       throw new Error("Store not found");
     }
 
+    const effectiveDrafts = applyRowOverridesToDrafts(
+      job.drafts,
+      options?.rowOverrides,
+    );
+    job.drafts = effectiveDrafts;
+
     const report = await runImportWorker(
       shop,
       job.id,
-      job.drafts,
+      effectiveDrafts,
       options?.resumeFromHandle ?? job.resumeFromHandle,
     );
     job.report = report;
@@ -513,7 +561,7 @@ export async function waitForExcelMapJob(
 export async function startExcelMapConfirm(
   jobId: string,
   shopId: string,
-  options?: { resumeFromHandle?: string },
+  options?: { resumeFromHandle?: string; rowOverrides?: ImportRowOverride[] },
 ): Promise<ExcelMapJobPublic> {
   const existing = await getExcelMapJob(jobId, shopId);
   if (!existing) {

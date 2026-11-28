@@ -154,7 +154,69 @@ export async function fetchProductBaselinesBatch(
     }
   }
 
+  // Fallback via productByIdentifier for handles missed by products(query:) search index
+  const missing = unique.filter((h) => !result.get(h));
+  for (let i = 0; i < missing.length; i += 15) {
+    const chunk = missing.slice(i, i + 15);
+    const fields = chunk
+      .map(
+        (h, idx) =>
+          `p${idx}: productByIdentifier(identifier: { handle: ${JSON.stringify(h)} }) {
+            id title handle descriptionHtml templateSuffix
+            variants(first: 1) { nodes { id sku price compareAtPrice } }
+            metafields(first: ${METAFIELD_FIRST}) { nodes { namespace key type value jsonValue } }
+          }`,
+      )
+      .join("\n");
+    try {
+      const data = await shopifyGraphqlForShop<
+        Record<string, NonNullable<ProductByHandleResponse["productByIdentifier"]> | null>
+      >(shop, `query ExactHandles {\n${fields}\n}`);
+      chunk.forEach((h, idx) => {
+        const node = data[`p${idx}`];
+        if (node) {
+          result.set(h, mapProductNodeToBaseline(node));
+        }
+      });
+    } catch (err) {
+      console.warn(
+        "[baseline] Exact handle lookup failed:",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
+
   return result;
+}
+
+export async function findTakenHandles(
+  shop: Shop,
+  handles: string[],
+): Promise<Set<string>> {
+  const unique = [...new Set(handles.map((h) => h.trim()).filter(Boolean))];
+  const taken = new Set<string>();
+  for (let i = 0; i < unique.length; i += 20) {
+    const chunk = unique.slice(i, i + 20);
+    const fields = chunk
+      .map(
+        (h, idx) =>
+          `h${idx}: productByIdentifier(identifier: { handle: ${JSON.stringify(h)} }) { id handle }`,
+      )
+      .join("\n");
+    try {
+      const data = await shopifyGraphqlForShop<
+        Record<string, { id: string; handle: string } | null>
+      >(shop, `query CheckHandles {\n${fields}\n}`);
+      chunk.forEach((h, idx) => {
+        if (data[`h${idx}`]) {
+          taken.add(h);
+        }
+      });
+    } catch {
+      // ignore check failure; import worker still retries on collision
+    }
+  }
+  return taken;
 }
 
 export async function fetchProductBaselineByHandle(

@@ -70,9 +70,11 @@ export async function runImportWorker(
     }
 
     if (draft.action === "create") {
-      const result = await createShopProduct(shop, {
-        title: draft.title ?? draft.handle,
-        handle: draft.handle,
+      const baseHandle = draft.handle;
+      let candidateHandle = baseHandle;
+      let result = await createShopProduct(shop, {
+        title: draft.title ?? baseHandle,
+        handle: candidateHandle,
         descriptionHtml: draft.body_html,
         templateSuffix: draft.template_suffix ?? null,
         status: "DRAFT",
@@ -83,10 +85,33 @@ export async function runImportWorker(
         metafields: mapDraftMetafields(draft),
       });
 
+      // Fallback: if Shopify still rejects handle as already in use, retry with numeric suffix
+      for (
+        let suffix = 2;
+        !result.productId &&
+        suffix <= 5 &&
+        result.errors.some((e) => /handle.*already in use/i.test(e));
+        suffix += 1
+      ) {
+        candidateHandle = `${baseHandle}-${suffix}`;
+        result = await createShopProduct(shop, {
+          title: draft.title ?? baseHandle,
+          handle: candidateHandle,
+          descriptionHtml: draft.body_html,
+          templateSuffix: draft.template_suffix ?? null,
+          status: "DRAFT",
+          price: draft.variants[0]?.price,
+          compareAtPrice: draft.variants[0]?.compare_at_price,
+          sku: draft.variants[0]?.sku,
+          publish: false,
+          metafields: mapDraftMetafields(draft),
+        });
+      }
+
       if (!result.productId) {
         report.summary.failed += 1;
         report.handles.push({
-          handle: draft.handle,
+          handle: candidateHandle,
           status: "failed",
           errors: result.errors,
         });
@@ -96,7 +121,7 @@ export async function runImportWorker(
 
       report.summary.created += 1;
       report.handles.push({
-        handle: draft.handle,
+        handle: result.handle ?? candidateHandle,
         status: "created",
         metafields_set: draft.metafields.length,
         errors: result.errors,

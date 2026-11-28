@@ -2,6 +2,7 @@ import type { Shop } from "@/generated/prisma/client";
 import { isFrozenDraftField, mergeKv, mergeText } from "@/lib/import/spec/merge";
 import {
   fetchProductBaselinesBatch,
+  findTakenHandles,
   type ProductBaseline,
 } from "@/lib/import/spec/product-baseline";
 import type {
@@ -54,6 +55,32 @@ async function prefetchBaselines(
   return fetchProductBaselinesBatch(shop, handles);
 }
 
+function normalizeCompareTitle(value: string | undefined): string {
+  return (value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function nextCandidateHandle(
+  base: string,
+  sku: string | undefined,
+  usedHandles: Set<string>,
+): string {
+  const cleanSku = (sku ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (cleanSku) {
+    const withSku = `${base}-${cleanSku}`;
+    if (!usedHandles.has(withSku)) {
+      return withSku;
+    }
+  }
+  let suffix = 2;
+  while (usedHandles.has(`${base}-${suffix}`)) {
+    suffix += 1;
+  }
+  return `${base}-${suffix}`;
+}
+
 export async function buildPreviewDiffs(
   shop: Shop,
   drafts: ProductDraft[],
@@ -68,6 +95,14 @@ export async function buildPreviewDiffs(
     .map((draft) => draft.handle);
   const baselines = await prefetchBaselines(shop, baselineHandles);
 
+  const seenInFile = new Set<string>();
+  const usedHandles = new Set<string>();
+  for (const [handle, baseline] of baselines.entries()) {
+    if (baseline) {
+      usedHandles.add(handle);
+    }
+  }
+
   for (const draft of drafts) {
     if (draft.errors.length > 0) {
       preview.push({
@@ -81,19 +116,76 @@ export async function buildPreviewDiffs(
       continue;
     }
 
+    const isDuplicateInFile = seenInFile.has(draft.handle);
+    seenInFile.add(draft.handle);
+    usedHandles.add(draft.handle);
+
+    if (isDuplicateInFile) {
+      const suggested = nextCandidateHandle(
+        draft.handle,
+        draft.variants[0]?.sku,
+        usedHandles,
+      );
+      usedHandles.add(suggested);
+      preview.push({
+        handle: draft.handle,
+        action: "create",
+        suggestedHandle: suggested,
+        conflictReason: "Duplicate handle in spreadsheet",
+        title: { new: draft.title },
+        price: draft.variants[0]?.price
+          ? { new: draft.variants[0].price }
+          : undefined,
+        template_suffix: draft.template_suffix
+          ? { new: draft.template_suffix }
+          : undefined,
+        metafieldChanges: draft.metafields.length,
+        warnings: [
+          ...draft.warnings,
+          `Duplicate handle — suggested "${suggested}"`,
+        ],
+        errors: [],
+      });
+      nextDrafts.push({ ...draft, action: "create" });
+      continue;
+    }
+
     const baseline = baselines.get(draft.handle) ?? null;
     if (baseline) {
       if (!policy.update_existing) {
+        const suggested = nextCandidateHandle(
+          draft.handle,
+          draft.variants[0]?.sku,
+          usedHandles,
+        );
+        usedHandles.add(suggested);
         preview.push({
           handle: draft.handle,
           action: "skip",
+          suggestedHandle: suggested,
+          conflictReason: `Handle already in use ("${baseline.title}")`,
+          existingTitle: baseline.title,
           title: { old: baseline.title, new: draft.title },
-          warnings: draft.warnings,
+          warnings: [
+            ...draft.warnings,
+            `Handle exists on store — suggested "${suggested}"`,
+          ],
           errors: ["HANDLE_EXISTS"],
           metafieldChanges: 0,
         });
         nextDrafts.push({ ...draft, action: "skip", productId: baseline.id });
         continue;
+      }
+
+      const titleMismatch =
+        Boolean(draft.title) &&
+        normalizeCompareTitle(baseline.title) !==
+          normalizeCompareTitle(draft.title);
+      const suggested = titleMismatch
+        ? nextCandidateHandle(draft.handle, draft.variants[0]?.sku, usedHandles)
+        : undefined;
+      if (suggested) {
+        usedHandles.add(suggested);
       }
 
       let workingDraft = applyFrozenFieldsOnUpdate(draft, policy, baseline);
@@ -124,6 +216,13 @@ export async function buildPreviewDiffs(
       preview.push({
         handle: draft.handle,
         action: "update",
+        ...(suggested
+          ? {
+              suggestedHandle: suggested,
+              conflictReason: `Handle exists on store as "${baseline.title}"`,
+              existingTitle: baseline.title,
+            }
+          : {}),
         title:
           workingDraft.title && workingDraft.title !== baseline.title
             ? { old: baseline.title, new: workingDraft.title }
@@ -140,7 +239,12 @@ export async function buildPreviewDiffs(
             : undefined,
         metafieldChanges: metafieldDiffs.length,
         metafieldDiffs,
-        warnings: draft.warnings,
+        warnings: suggested
+          ? [
+              ...draft.warnings,
+              `Existing product "${baseline.title}" — approve update or use "${suggested}"`,
+            ]
+          : draft.warnings,
         errors: [],
       });
       nextDrafts.push({
@@ -179,6 +283,24 @@ export async function buildPreviewDiffs(
       errors: [],
     });
     nextDrafts.push({ ...draft, action: "create" });
+  }
+
+  // Verify candidate suggested handles are actually free on Shopify
+  const candidates = preview
+    .map((row) => row.suggestedHandle)
+    .filter((h): h is string => Boolean(h));
+  if (candidates.length > 0) {
+    const taken = await findTakenHandles(shop, candidates);
+    if (taken.size > 0) {
+      for (const h of taken) usedHandles.add(h);
+      for (const row of preview) {
+        if (row.suggestedHandle && taken.has(row.suggestedHandle)) {
+          const next = nextCandidateHandle(row.handle, undefined, usedHandles);
+          usedHandles.add(next);
+          row.suggestedHandle = next;
+        }
+      }
+    }
   }
 
   void mapping;

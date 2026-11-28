@@ -187,21 +187,33 @@ export function previewToLegacyRows(
   metafieldCount: number;
   warnings: string[];
   action: string;
+  suggestedHandle?: string;
+  conflictReason?: string;
+  existingTitle?: string;
 }> {
-  return preview.slice(0, 15).map((row, index) => ({
-    index: index + 1,
-    title: row.title?.new ?? row.title?.old ?? "",
-    handle: row.handle,
-    price: row.price?.new ?? row.price?.old ?? "",
-    template_suffix: row.template_suffix?.new ?? row.template_suffix?.old ?? "",
-    metafieldCount: row.metafieldChanges,
-    warnings: [
-      ...(row.errors ?? []),
-      ...row.warnings,
-      ...(row.metafieldDiffs?.map(
-        (diff) => `${diff.key}: ${diff.old ? "merge" : "set"}`,
-      ) ?? []),
-    ],
-    action: row.action,
-  }));
+  return preview
+    .map((row, index) => ({ row, index }))
+    .filter(
+      ({ row, index }) =>
+        index < 15 || Boolean(row.conflictReason) || row.errors.length > 0,
+    )
+    .map(({ row, index }) => ({
+      index: index + 1,
+      title: row.title?.new ?? row.title?.old ?? "",
+      handle: row.handle,
+      price: row.price?.new ?? row.price?.old ?? "",
+      template_suffix: row.template_suffix?.new ?? row.template_suffix?.old ?? "",
+      metafieldCount: row.metafieldChanges,
+      warnings: [
+        ...(row.errors ?? []),
+        ...row.warnings,
+        ...(row.metafieldDiffs?.map(
+          (diff) => `${diff.key}: ${diff.old ? "merge" : "set"}`,
+        ) ?? []),
+      ],
+      action: row.action,
+      ...(row.suggestedHandle ? { suggestedHandle: row.suggestedHandle } : {}),
+      ...(row.conflictReason ? { conflictReason: row.conflictReason } : {}),
+      ...(row.existingTitle ? { existingTitle: row.existingTitle } : {}),
+    }));
 }

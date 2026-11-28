@@ -143,6 +143,9 @@ export interface ProductDraft {
 export interface PreviewRowDiff {
   handle: string;
   action: "create" | "update" | "skip" | "error";
+  suggestedHandle?: string;
+  conflictReason?: string;
+  existingTitle?: string;
   title?: { old?: string; new?: string };
   price?: { old?: string; new?: string };
   template_suffix?: { old?: string; new?: string };
