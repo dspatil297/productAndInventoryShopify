@@ -190,6 +190,9 @@ export function AiImportSection({
     setJob(null);
     setActiveJobId(null);
     setErrorMessage(null);
+    setImportSuccess(false);
+    setRowOverrides({});
+    setEditingHandleIndex(null);
     setProgressPercent(0);
     setProgressStage("");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -452,7 +455,11 @@ export function AiImportSection({
     }
   };
 
-  const previewReady = job?.status === "preview_ready";
+  const previewReady = Boolean(
+    job &&
+      (job.status === "preview_ready" ||
+        (job.status === "error" && (job.previewRows?.length ?? 0) > 0)),
+  );
   const flaggedRows = (job?.previewRows ?? []).filter((row) =>
     Boolean(row.conflictReason && !rowOverrides[row.index]),
   );

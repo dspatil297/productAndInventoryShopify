@@ -174,7 +174,7 @@ export async function fetchProductBaselinesBatch(
       >(shop, `query ExactHandles {\n${fields}\n}`);
       chunk.forEach((h, idx) => {
         const node = data[`p${idx}`];
-        if (node) {
+        if (node && node.handle === h) {
           result.set(h, mapProductNodeToBaseline(node));
         }
       });

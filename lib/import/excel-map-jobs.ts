@@ -344,6 +344,8 @@ export async function confirmExcelMapImport(
   }
 
   job.status = "importing";
+  job.error = undefined;
+  job.flash = undefined;
 
   try {
     const shop = await getShopWithConfig(job.shopId);
@@ -351,17 +353,27 @@ export async function confirmExcelMapImport(
       throw new Error("Store not found");
     }
 
+    const requestedResume = options?.resumeFromHandle ?? job.resumeFromHandle;
+    const resumeIdx = requestedResume
+      ? job.drafts.findIndex((draft) => draft.handle === requestedResume)
+      : -1;
+
     const effectiveDrafts = applyRowOverridesToDrafts(
       job.drafts,
       options?.rowOverrides,
     );
     job.drafts = effectiveDrafts;
 
+    const resolvedResume =
+      resumeIdx >= 0
+        ? effectiveDrafts[resumeIdx]?.handle
+        : options?.resumeFromHandle;
+
     const report = await runImportWorker(
       shop,
       job.id,
       effectiveDrafts,
-      options?.resumeFromHandle ?? job.resumeFromHandle,
+      resolvedResume,
     );
     job.report = report;
     job.resumeFromHandle = report.resume_from_handle;
@@ -379,10 +391,12 @@ export async function confirmExcelMapImport(
         saved: String(imported),
         error: `${report.summary.failed} row(s) failed at ${report.resume_from_handle ?? "unknown"}${failureDetail}`,
       };
-      job.status = imported > 0 ? "done" : "error";
-      if (job.status === "error") {
-        job.error = job.flash.error;
-      }
+      const canRecoverInPreview = Boolean(
+        report.resume_from_handle && job.previewRows?.length,
+      );
+      job.error = job.flash.error;
+      job.status =
+        imported > 0 ? "done" : canRecoverInPreview ? "preview_ready" : "error";
       await saveImportSession(job.shopId, {
         id: job.id,
         shopId: job.shopId,

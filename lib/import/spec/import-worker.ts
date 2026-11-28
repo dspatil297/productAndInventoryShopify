@@ -49,6 +49,7 @@ export async function runImportWorker(
   };
 
   let resume = !resumeFromHandle;
+  const createdHandles = new Set<string>();
 
   for (const draft of drafts) {
     if (!resume) {
@@ -72,6 +73,14 @@ export async function runImportWorker(
     if (draft.action === "create") {
       const baseHandle = draft.handle;
       let candidateHandle = baseHandle;
+      if (createdHandles.has(candidateHandle)) {
+        let suffix = 2;
+        while (createdHandles.has(`${baseHandle}-${suffix}`)) {
+          suffix += 1;
+        }
+        candidateHandle = `${baseHandle}-${suffix}`;
+      }
+
       let result = await createShopProduct(shop, {
         title: draft.title ?? baseHandle,
         handle: candidateHandle,
@@ -85,14 +94,17 @@ export async function runImportWorker(
         metafields: mapDraftMetafields(draft),
       });
 
-      // Fallback: if Shopify still rejects handle as already in use, retry with numeric suffix
+      // Fallback: if Shopify rejects handle as in use, retry next free numeric suffix
       for (
         let suffix = 2;
         !result.productId &&
-        suffix <= 5 &&
-        result.errors.some((e) => /handle.*already in use/i.test(e));
+        suffix <= 20 &&
+        result.errors.some((e) => /handle.*(already in use|taken|exists)/i.test(e));
         suffix += 1
       ) {
+        while (createdHandles.has(`${baseHandle}-${suffix}`)) {
+          suffix += 1;
+        }
         candidateHandle = `${baseHandle}-${suffix}`;
         result = await createShopProduct(shop, {
           title: draft.title ?? baseHandle,
@@ -119,6 +131,7 @@ export async function runImportWorker(
         break;
       }
 
+      createdHandles.add(result.handle ?? candidateHandle);
       report.summary.created += 1;
       report.handles.push({
         handle: result.handle ?? candidateHandle,
@@ -139,7 +152,6 @@ export async function runImportWorker(
         productId: draft.productId,
         variantId: draft.variantId,
         title: draft.title ?? draft.handle,
-        handle: draft.handle,
         descriptionHtml: draft.body_html,
         templateSuffix: draft.template_suffix ?? undefined,
         price: variant?.price,
